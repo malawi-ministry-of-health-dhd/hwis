@@ -65,6 +65,118 @@ import {
   NotesConfig,
 } from "@/app/patient/components/clinicalNotes/updated-clinical-notes/genericNotes";
 
+type NotesChild = {
+  item: string | { [key: string]: string } | null | undefined;
+  bold?: boolean;
+  children?: NotesChild | NotesChild[] | null | undefined;
+};
+
+const RenderNotesChildren: React.FC<{
+  children?: NotesChild | NotesChild[] | null | undefined;
+  level?: number;
+}> = ({ children, level = 1 }) => {
+  const normalizedChildren: NotesChild[] = Array.isArray(children)
+    ? children
+    : children
+      ? [children]
+      : [];
+
+  if (!normalizedChildren.length) return null;
+
+  return (
+    <div style={{ paddingLeft: `${level * 12}px` }}>
+      {normalizedChildren.map((child, index) => {
+        let itemText: React.ReactNode = null;
+
+        if (typeof child?.item === "string") {
+          itemText = child.bold ? <strong>{child.item}</strong> : child.item;
+        } else if (child?.item && typeof child.item === "object") {
+          itemText = (
+            <>
+              {Object.entries(child.item).map(([key, value], i, arr) => (
+                <span key={i}>
+                  {child.bold ? <strong>{key}</strong> : key}: {value}
+                  {i < arr.length - 1 && ", "}
+                </span>
+              ))}
+            </>
+          );
+        }
+
+        return (
+          <div key={index} style={{ marginBottom: "4px" }}>
+            {itemText && <div>- {itemText}</div>}
+            {child?.children && (
+              <RenderNotesChildren children={child.children} level={level + 1} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const PatientManagementPlanGrid = ({ data }: { data: any[] }) => {
+  if (!Array.isArray(data) || data.length === 0) return null;
+
+  return (
+    <Box>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: "12px",
+          width: "100%",
+        }}
+      >
+        {data.map((section, index) => {
+          const hasContent =
+            Array.isArray(section?.children)
+              ? section.children.length > 0
+              : Boolean(section?.children);
+
+          return (
+            <div
+              key={index}
+              style={{
+                border: "1px solid #e0e0e0",
+                borderRadius: "6px",
+                padding: "10px",
+                backgroundColor: "#fafafa",
+                minHeight: "100px",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <h4
+                style={{
+                  fontWeight: "bold",
+                  marginBottom: "6px",
+                  marginTop: 0,
+                  fontSize: "0.9rem",
+                  borderBottom: "1px solid #ddd",
+                  paddingBottom: "4px",
+                }}
+              >
+                {section?.heading ?? "Untitled"}
+              </h4>
+              <div style={{ paddingLeft: "8px", fontSize: "0.85rem", flexGrow: 1 }}>
+                {hasContent ? (
+                  <RenderNotesChildren children={section.children as NotesChild[]} />
+                ) : (
+                  <div style={{ color: "#999", fontStyle: "italic", fontSize: "0.8rem" }}>
+                    Notes not entered
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Box>
+  );
+};
+
 type PanelData = {
   title: string;
   data: any;
@@ -463,12 +575,13 @@ export const ClinicalNotes = () => {
     panel51: {
       title: "Patient Management Plan",
       data: (
-        <DisplayInformation
-          title=""
+        <PatientManagementPlanGrid
           data={formatPatientManagamentPlan({
             nonPharmalogical: getEncountersByType(
               encounters.NON_PHARMACOLOGICAL
             ),
+            careAreaObs: getEncountersByType(encounters.PATIENT_CARE_AREA),
+            medicationObs: getEncountersByType(encounters.PRESCRIPTIONS),
           })}
         />
       ),
@@ -1021,9 +1134,15 @@ export const ClinicalNotes = () => {
     },
     {
       title: "Patient Management Plan",
-      content: formatPatientManagamentPlan({
-        nonPharmalogical: getEncountersByType(encounters.NON_PHARMACOLOGICAL),
-      }),
+      content: (
+        <PatientManagementPlanGrid
+          data={formatPatientManagamentPlan({
+            nonPharmalogical: getEncountersByType(encounters.NON_PHARMACOLOGICAL),
+            careAreaObs: getEncountersByType(encounters.PATIENT_CARE_AREA),
+            medicationObs: getEncountersByType(encounters.PRESCRIPTIONS),
+          })}
+        />
+      ),
     },
     {
       title: "Diagnosis",

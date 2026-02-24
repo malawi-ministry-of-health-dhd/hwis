@@ -330,7 +330,20 @@ export const NotesConfig = {
         itemRenderer: (item: any) => {
             // item.rootValue contains the category name (e.g., "Food Allergy", "Medication Allergy")
             const categoryName = item.rootValue;
-            
+
+            if (
+                typeof categoryName === "string" &&
+                categoryName.toLowerCase().includes("no known allergies")
+            ) {
+                return (
+                    <div style={{ marginBottom: "8px" }}>
+                        <div style={{ fontWeight: "100" }}>
+                            {categoryName}
+                        </div>
+                    </div>
+                );
+            }
+
             // Get all allergens and their details from children
             const allergens: any[] = [];
             let allergyDetails = "";
@@ -521,6 +534,19 @@ export const NotesConfig = {
         rootConcept: "Review of systems, trauma",
         fields: [],
         itemRenderer: (item: any) => {
+            if (
+                typeof item.rootValue === "string" &&
+                item.rootValue.toLowerCase().includes("not injured")
+            ) {
+                return (
+                    <div style={{ marginBottom: "8px" }}>
+                        <div style={{ fontWeight: "100" }}>
+                            {item.rootValue}
+                        </div>
+                    </div>
+                );
+            }
+
             const mechanisms: any = {};
             const details: any = {};
 

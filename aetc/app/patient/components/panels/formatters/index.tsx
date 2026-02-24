@@ -115,6 +115,8 @@ export const formatPrimarySurvey = (data: {
 
 export const formatPatientManagamentPlan = (data: {
   nonPharmalogical: Obs[];
+  careAreaObs: Obs[];
+  medicationObs: Obs[];
 }): ClinicalNotesDataType[] => [
   {
     heading: "Non-Pharmacological",
@@ -123,6 +125,16 @@ export const formatPatientManagamentPlan = (data: {
       data.nonPharmalogical
     ),
     user: formatUser(data.nonPharmalogical),
+  },
+  {
+    heading: "Patient Care Area",
+    children: formatCareAreaNotes(data.careAreaObs),
+    user: formatUser(data.careAreaObs),
+  },
+  {
+    heading: "Medications",
+    children: formatMedicationPlanNotes(data.medicationObs),
+    user: formatUser(data.medicationObs),
   },
 ];
 
@@ -284,13 +296,39 @@ export const formatManagementPlan = (data: Obs[]): ClinicalNotesDataType => {
   };
 };
 
-export const formatDisposition = (data: Obs[]) => [
-  {
-    heading: "Disposition",
-    children: buildNotesObject(dispositionFormConfig, data),
-    user: formatUser(data),
-  },
-];
+const getDispositionConfig = (ob: Obs) => {
+  const conceptName = ob?.names?.[0]?.name;
+  return (
+    Object.values(dispositionFormConfig).find(
+      (config: any) =>
+        config?.name === conceptName || config?.name === ob?.value
+    ) || null
+  );
+};
+
+export const formatDisposition = (data: Obs[]) => {
+  if (!Array.isArray(data) || data.length === 0) return [];
+
+  return data
+    .filter((ob) => ob?.value || (ob?.children && ob.children.length > 0))
+    .map((ob) => {
+      const config = getDispositionConfig(ob);
+      const heading =
+        config?.label || ob?.value || ob?.names?.[0]?.name || "Disposition";
+      const children = config?.children
+        ? buildChildren(ob?.children ?? [], config.children)
+        : [];
+      const user = ob?.created_by
+        ? `${ob.created_by} ${getHumanReadableDateTime(ob?.obs_datetime)}`
+        : undefined;
+
+      return {
+        heading,
+        children,
+        user,
+      };
+    });
+};
 
 /** ------------------------------
  * Helpers for children + notes
@@ -335,6 +373,86 @@ const handleImagesObsRestructure = (children: Obs[]) => {
     });
 };
 
+const formatDateDDMMYYYY = (value: any) => {
+  if (!value || typeof value !== "string") return value;
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return value;
+  return `${match[3]}-${match[2]}-${match[1]}`;
+};
+
+const getLatestObs = (obsList: Obs[]) => {
+  if (!obsList || obsList.length === 0) return null;
+  return obsList.reduce((latest: Obs | null, current: Obs) => {
+    if (!latest) return current;
+    const latestTime = new Date(latest?.obs_datetime || 0).getTime();
+    const currentTime = new Date(current?.obs_datetime || 0).getTime();
+    return currentTime > latestTime ? current : latest;
+  }, null);
+};
+
+const formatCareAreaNotes = (obs: Obs[]) => {
+  const careArea = getObservationValue(obs, concepts.CARE_AREA);
+  if (!careArea) return [];
+  return [{ item: { "Patient Care Area": careArea } }];
+};
+
+const formatMedicationPlanNotes = (obs: Obs[]) => {
+  if (!obs?.length) return [];
+
+  return obs
+    .filter((ob) => ob?.value || (ob?.children && ob.children.length > 0))
+    .map((ob) => {
+      const formulation = getObservationValue(
+        ob.children,
+        concepts.MEDICATION_FORMULATION
+      );
+      const dose = getObservationValue(ob.children, concepts.MEDICATION_DOSE);
+      const doseUnit = getObservationValue(
+        ob.children,
+        concepts.MEDICATION_DOSE_UNIT
+      );
+      const frequency = getObservationValue(
+        ob.children,
+        concepts.MEDICATION_FREQUENCY
+      );
+      const duration = getObservationValue(
+        ob.children,
+        concepts.MEDICATION_DURATION
+      );
+      const durationUnit = getObservationValue(
+        ob.children,
+        concepts.MEDICATION_DURATION_UNIT
+      );
+
+      const children = [];
+
+      if (formulation) {
+        children.push({ item: { Formulation: formulation } });
+      }
+
+      if (dose || doseUnit) {
+        children.push({
+          item: { Dose: [dose, doseUnit].filter(Boolean).join(" ") },
+        });
+      }
+
+      if (frequency) {
+        children.push({ item: { Frequency: frequency } });
+      }
+
+      if (duration || durationUnit) {
+        children.push({
+          item: { Duration: [duration, durationUnit].filter(Boolean).join(" ") },
+        });
+      }
+
+      return {
+        item: ob.value || "Medication",
+        children: children.length > 0 ? children : undefined,
+      };
+    });
+};
+
 const buildChildren = (obs: Obs[], children: any) => {
   if (!children) return [];
   return (
@@ -352,10 +470,14 @@ const buildChildren = (obs: Obs[], children: any) => {
       }
 
       const obValue = getObservationValue(obs, child?.concept);
+      const formattedObValue =
+        child?.format === "date" ? formatDateDDMMYYYY(obValue) : obValue;
 
       // If there's no usable value, skip this child
       if (
-        (!obValue || obValue === "" || obValue === null) &&
+        (!formattedObValue ||
+          formattedObValue === "" ||
+          formattedObValue === null) &&
         (!child.multiple || innerObs.length === 0)
       ) {
         return [];
@@ -374,8 +496,8 @@ const buildChildren = (obs: Obs[], children: any) => {
               })
               .filter(Boolean)
           : child?.options
-            ? child.options[obValue]
-            : obValue;
+            ? child.options[formattedObValue]
+            : formattedObValue;
 
         if (
           childValue === undefined ||
@@ -401,8 +523,8 @@ const buildChildren = (obs: Obs[], children: any) => {
                 return val ? { item: val } : null;
               })
               .filter(Boolean)
-          : obValue
-            ? { [child.label]: obValue }
+          : formattedObValue
+            ? { [child.label]: formattedObValue }
             : null;
 
         if (
@@ -451,12 +573,18 @@ const buildNotesObject = (formConfig: any, obs: Obs[]) => {
       if (config.groupMembersWithLabel) {
         const parentObs: any = filterObservations(obs, config.name);
         if (parentObs?.length > 0) {
-          groupMemberChildren = parentObs[0]?.children;
+          const parentToUse = config.useLatestGroupMember
+            ? getLatestObs(parentObs)
+            : parentObs[0];
+          groupMemberChildren = parentToUse?.children ?? [];
         }
       }
 
       let children =
-        buildChildren([...obs, ...groupMemberChildren], config.children) ?? [];
+        buildChildren(
+          config.groupMembersOnly ? groupMemberChildren : [...obs, ...groupMemberChildren],
+          config.children
+        ) ?? [];
 
       if (config.hasGroupMembers) {
         const parentObs: any = filterObservations(obs, config.name);

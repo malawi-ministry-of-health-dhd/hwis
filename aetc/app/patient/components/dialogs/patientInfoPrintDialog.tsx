@@ -3,6 +3,7 @@ import { SelectPrinter } from "@/components/selectPrinter";
 import { concepts, encounters } from "@/constants";
 import { useVisitDates } from "@/contexts/visitDatesContext";
 import { getObservationValue } from "@/helpers/emr";
+import { getHumanReadableDateTime } from "@/helpers/dateTime";
 import { generatePatientSummaryZPL } from "@/helpers/zpl";
 
 import { useParameters } from "@/hooks";
@@ -29,7 +30,11 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
   const [presentingComplaints, setPresentingComplaints] = useState<Obs[]>([]);
   const [patientLabOrders, setPatientLabOrders] = useState<Array<any>>([]);
   const [printer, setPrinter] = useState("");
-    const { selectedVisit } = useVisitDates();
+  const { selectedVisit } = useVisitDates();
+  const [summaryMeta, setSummaryMeta] = useState<{
+    createdBy: string;
+    completedAt: string;
+  }>({ createdBy: "", completedAt: "" });
 
   const [notes, setNotes] = useState<any>({
     dischargeNotes: "",
@@ -85,11 +90,12 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
   useEffect(() => {
     if (initialNotes) {
       setNotes(initialNotes);
-      return
+      // still allow summary meta to be set from disposition
     }
     if (disposition) {
-      const dischargedOb = disposition
-        .filter((d) => d.visit_id == selectedVisit.id)[0]
+      const visitDisposition = disposition
+        .filter((d) => d.visit_id == selectedVisit.id)[0];
+      const dischargedOb = visitDisposition
         ?.obs.find((d: Obs) =>
           d.names.find((n) => n.name == concepts.DISCHARGE_HOME)
         );
@@ -129,6 +135,13 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
           homeCareInstructions,
         });
       })();
+
+      if (visitDisposition) {
+        setSummaryMeta({
+          createdBy: visitDisposition.created_by || "",
+          completedAt: visitDisposition.encounter_datetime || "",
+        });
+      }
     }
   }, [disposition, selectedVisit]);
 
@@ -157,6 +170,19 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
       open={open}
     >
       <Stack spacing={3}>
+        {(summaryMeta.createdBy || summaryMeta.completedAt) && (
+          <Box>
+            <Typography
+              variant="body2"
+              sx={{ fontStyle: "italic", color: "text.secondary" }}
+            >
+              {summaryMeta.createdBy && `${summaryMeta.createdBy} `}
+              {summaryMeta.completedAt &&
+                getHumanReadableDateTime(summaryMeta.completedAt)}
+            </Typography>
+          </Box>
+        )}
+
         {/* Presenting Complaints */}
         {/* <Box>
           <Typography variant="h6">Presenting Complaints</Typography>
@@ -174,7 +200,9 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
           <Typography variant="h6">Final Diagnosis</Typography>
           <Stack spacing={1} mt={1}>
             {diagnosis?.map((d, index) => (
-              <Typography key={`diagnosis-${index}`}>{d.value}</Typography>
+              <Typography key={`diagnosis-${index}`}>
+                {d.value_text || d.value}
+              </Typography>
             ))}
           </Stack>
         </Box>

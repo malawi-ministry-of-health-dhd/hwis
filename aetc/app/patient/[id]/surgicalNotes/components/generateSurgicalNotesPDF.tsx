@@ -27,17 +27,30 @@ export const GenerateSurgicalNotesPDF = forwardRef<SurgicalNotesPDFRef, Generate
         const [row, setRow] = useState<any>(null);
         const { params } = useParameters();
         const { data: patientVisits } = getPatientVisitTypes(params.id as string);
-        const { data: encountersData } = getPatientsEncounters(params.id as string);
         const [activeVisit, setActiveVisit] = useState<Visit | undefined>(undefined);
+        const { data: encountersData } = getPatientsEncounters(
+            params.id as string,
+            activeVisit?.uuid ? `visit=${activeVisit.uuid}` : undefined
+        );
 
-        const [clerkInfo, setClerkInfo] = useState({
+        useEffect(() => {
+            if (patientVisits) {
+                const active = patientVisits.find((visit) => !visit.date_stopped);
+                if (active) {
+                    setActiveVisit(active as unknown as Visit);
+                }
+            }
+        }, [patientVisits]);
+
+        const initialClerkInfo = {
             clerkName: "",
             designation: "",
             signature: "",
             additionalNotes: "",
-        });
+        };
+        const [clerkInfo, setClerkInfo] = useState(initialClerkInfo);
 
-        const [presentingInfo, setPresentingInfo] = useState({
+        const initialPresentingInfo = {
             complaints: [] as Array<{ complaint: string, duration: string }>, // Change this line
             history: "",
             surgicalHistory: "",
@@ -52,17 +65,19 @@ export const GenerateSurgicalNotesPDF = forwardRef<SurgicalNotesPDFRef, Generate
             },
             alcoholIntake: "",
             recreationalDrugs: "",
-        });
+        };
+        const [presentingInfo, setPresentingInfo] = useState(initialPresentingInfo);
 
         // Add gynae history state
-        const [gynaeHistory, setGynaeHistory] = useState({
+        const initialGynaeHistory = {
             isPregnant: "",
             lnmp: "",
             gestationalAge: "",
             parity: "",
-        });
+        };
+        const [gynaeHistory, setGynaeHistory] = useState(initialGynaeHistory);
 
-        const [reviewOfSystems, setReviewOfSystems] = useState({
+        const initialReviewOfSystems = {
             general: [] as string[],
             ent: [] as string[],
             endocrine: [] as string[],
@@ -73,9 +88,10 @@ export const GenerateSurgicalNotesPDF = forwardRef<SurgicalNotesPDFRef, Generate
             musculoskeletal: [] as string[],
             neurologic: [] as string[],
             psychiatric: [] as string[],
-        });
+        };
+        const [reviewOfSystems, setReviewOfSystems] = useState(initialReviewOfSystems);
 
-        const [physicalExam, setPhysicalExam] = useState({
+        const initialPhysicalExam = {
             generalCondition: "",
             temperature: "",
             pulseRate: "",
@@ -96,7 +112,8 @@ export const GenerateSurgicalNotesPDF = forwardRef<SurgicalNotesPDFRef, Generate
             pulsations: "",
             rectalExamination: "",
             extremities: "",
-        });
+        };
+        const [physicalExam, setPhysicalExam] = useState(initialPhysicalExam);
 
         const [pastMedicalHistory, setPastMedicalHistory] = useState<Array<{
             condition: string;
@@ -106,6 +123,13 @@ export const GenerateSurgicalNotesPDF = forwardRef<SurgicalNotesPDFRef, Generate
             reasonForRequest: string;
             medicationDuration: string;
         }>>([]);
+        const [surgicalMeta, setSurgicalMeta] = useState<{
+            admittingOfficer: string;
+            completedDateTime: string;
+        }>({
+            admittingOfficer: "",
+            completedDateTime: "",
+        });
 
         // Ref for printing
         const contentRef = useRef<HTMLDivElement>(null);
@@ -123,15 +147,35 @@ export const GenerateSurgicalNotesPDF = forwardRef<SurgicalNotesPDFRef, Generate
             }
         }));
 
-        useEffect(() => {
-            if (!encountersData) return;
+        const visitEncounters = React.useMemo(() => {
+            if (!encountersData || !activeVisit?.uuid) return [];
+            return encountersData.filter(
+                (encounter: any) => encounter?.visit?.uuid === activeVisit.uuid
+            );
+        }, [encountersData, activeVisit?.uuid]);
 
-            const surgicalEncounter = encountersData
+        useEffect(() => {
+            if (!activeVisit?.uuid || visitEncounters.length === 0) {
+                setClerkInfo(initialClerkInfo);
+                setPresentingInfo(initialPresentingInfo);
+                setGynaeHistory(initialGynaeHistory);
+                setReviewOfSystems(initialReviewOfSystems);
+                setPhysicalExam(initialPhysicalExam);
+                setPastMedicalHistory([]);
+                setSurgicalMeta({ admittingOfficer: "", completedDateTime: "" });
+                return;
+            }
+
+            const surgicalEncounter = visitEncounters
                 ?.filter((encounter) => encounter.encounter_type &&
                     encounter.encounter_type.uuid === encounters.SURGICAL_NOTES_TEMPLATE_FORM)
                 .sort((a, b) => new Date(b.encounter_datetime).getTime() - new Date(a.encounter_datetime).getTime())[0];
 
             if (surgicalEncounter && surgicalEncounter.obs) {
+                setSurgicalMeta({
+                    admittingOfficer: surgicalEncounter.created_by || "",
+                    completedDateTime: surgicalEncounter.encounter_datetime || "",
+                });
                 // Initialize with default values
                 const newClerkInfo = {
                     clerkName: "",
@@ -445,7 +489,7 @@ export const GenerateSurgicalNotesPDF = forwardRef<SurgicalNotesPDFRef, Generate
                 medicationDuration: string;
             }> = [];
 
-            encountersData.forEach(encounter => {
+            visitEncounters.forEach(encounter => {
                 if (encounter.obs) {
                     encounter.obs.forEach(obs => {
                         const conceptName = obs.names && obs.names.length > 0 ? obs.names[0].name : null;
@@ -492,6 +536,8 @@ export const GenerateSurgicalNotesPDF = forwardRef<SurgicalNotesPDFRef, Generate
                         reviewOfSystems={reviewOfSystems}
                         physicalExam={physicalExam}
                         clerkInfo={clerkInfo}
+                        admittingOfficer={surgicalMeta.admittingOfficer}
+                        completedDateTime={surgicalMeta.completedDateTime}
                         gynaeHistory={gynaeHistory} // Pass gynae history to the content component
                         setRow={setRow}
                         showPatientInfo={true}

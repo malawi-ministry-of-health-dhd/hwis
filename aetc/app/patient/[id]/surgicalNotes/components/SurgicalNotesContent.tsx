@@ -75,6 +75,8 @@ interface Props {
         signature: string;
         additionalNotes: string;
     };
+    admittingOfficer: string;
+    completedDateTime: string;
 
     // Add gynae history prop
     gynaeHistory: {
@@ -94,6 +96,8 @@ export const SurgicalNotesContent: React.FC<Props> = ({
     reviewOfSystems,
     physicalExam,
     clerkInfo,
+    admittingOfficer,
+    completedDateTime,
     gynaeHistory,
     setRow,
     showPatientInfo = false
@@ -202,9 +206,41 @@ export const SurgicalNotesContent: React.FC<Props> = ({
         return clerkInfo.additionalNotes || clerkInfo.clerkName || clerkInfo.designation || clerkInfo.signature;
     };
 
+    const formatDateTime = (dateTimeString: string) => {
+        if (!dateTimeString) return "";
+        const date = new Date(dateTimeString);
+        return date.toLocaleString('en-GB', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+    };
+
     return (
         <div>
             {showPatientInfo && <PatientInfoTab />}
+
+            {(admittingOfficer || completedDateTime) && (
+                <div style={{ marginBottom: "20px", padding: "10px", backgroundColor: "#f5f5f5", borderRadius: "4px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "20px" }}>
+                        {admittingOfficer && (
+                            <p style={{ margin: "5px 0" }}>
+                                <strong>Admitting Officer: </strong>
+                                {admittingOfficer}
+                            </p>
+                        )}
+                        {completedDateTime && (
+                            <p style={{ margin: "5px 0" }}>
+                                <strong>Date & Time Completed: </strong>
+                                {formatDateTime(completedDateTime)}
+                            </p>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <h1 style={{ textAlign: "center", marginBottom: "20px" }}>Surgical Notes</h1>
 

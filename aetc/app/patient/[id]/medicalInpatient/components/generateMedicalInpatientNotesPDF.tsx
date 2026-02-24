@@ -28,10 +28,22 @@ export const GenerateMedicalInpatientlNotesPDF = forwardRef<MedicalInpatientNote
         const [row, setRow] = useState<any>(null);
         const { params } = useParameters();
         const { data: patientVisits } = getPatientVisitTypes(params.id as string);
-        const { data: encountersData } = getPatientsEncounters(params.id as string);
         const [activeVisit, setActiveVisit] = useState<Visit | undefined>(undefined);
+        const { data: encountersData } = getPatientsEncounters(
+            params.id as string,
+            activeVisit?.uuid ? `visit=${activeVisit.uuid}` : undefined
+        );
 
-        const [medicalInpatientInfo, setMedicalInpatientInfo] = useState({
+        useEffect(() => {
+            if (patientVisits) {
+                const active = patientVisits.find((visit) => !visit.date_stopped);
+                if (active) {
+                    setActiveVisit(active as unknown as Visit);
+                }
+            }
+        }, [patientVisits]);
+
+        const initialMedicalInpatientInfo = {
             presentingComplaint: [] as Array<{ complaint: string, duration: string }>,
             presentingHistory: "",
             medication: [] as string[],        // 👈 was string
@@ -118,9 +130,8 @@ export const GenerateMedicalInpatientlNotesPDF = forwardRef<MedicalInpatientNote
             abdomenRegion: "",
             lungRegion: "",
 
-
-
-        });
+        };
+        const [medicalInpatientInfo, setMedicalInpatientInfo] = useState(initialMedicalInpatientInfo);
 
         // Ref for printing
         const contentRef = useRef<HTMLDivElement>(null);
@@ -138,9 +149,19 @@ export const GenerateMedicalInpatientlNotesPDF = forwardRef<MedicalInpatientNote
             }
         }));
 
+        const visitEncounters = React.useMemo(() => {
+            if (!encountersData || !activeVisit?.uuid) return [];
+            return encountersData.filter(
+                (encounter: any) => encounter?.visit?.uuid === activeVisit.uuid
+            );
+        }, [encountersData, activeVisit?.uuid]);
+
         useEffect(() => {
-            if (!encountersData) return;
-            const medicalInpatientEncounter = encountersData
+            if (!activeVisit?.uuid || visitEncounters.length === 0) {
+                setMedicalInpatientInfo(initialMedicalInpatientInfo);
+                return;
+            }
+            const medicalInpatientEncounter = visitEncounters
                 ?.filter(
                     (encounter) =>
                         encounter.encounter_type &&
@@ -625,7 +646,7 @@ export const GenerateMedicalInpatientlNotesPDF = forwardRef<MedicalInpatientNote
             //     });
             // };
 
-        }, [encountersData]);
+        }, [visitEncounters, activeVisit?.uuid]);
 
         const formatDateTime = (dateTimeString: string) => {
             if (!dateTimeString) return "";
@@ -1600,5 +1621,3 @@ export const GenerateMedicalInpatientlNotesPDF = forwardRef<MedicalInpatientNote
         );
     }
 );
-
-

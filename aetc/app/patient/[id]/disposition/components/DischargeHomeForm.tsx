@@ -145,6 +145,8 @@ export const dispositionFormConfig = {
     name: concepts.AWAITING_SPECIALITY_REVIEW,
     label: "Awaiting specialty review",
     groupMembersWithLabel: true,
+    useLatestGroupMember: true,
+    groupMembersOnly: true,
     type: "string",
     children: [
       {
@@ -156,8 +158,9 @@ export const dispositionFormConfig = {
         label: "Reason for Request",
       },
       {
-        concept: concepts.DATE,
-        label: "Date",
+        concept: concepts.DATE_OF_ABSCONDING,
+        label: "Date for Review",
+        format: "date",
       },
     ],
   },

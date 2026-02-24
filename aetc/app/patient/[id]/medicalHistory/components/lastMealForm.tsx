@@ -52,7 +52,7 @@ export const LastMealForm = ({ onSubmit, onSkip, onPrevious }: Prop) => {
 
   const handleSubmit = async () => {
     if (formValues.didNotEat) {
-      onSkip();
+      onSubmit({ didNotEat: true });
       return;
     }
 

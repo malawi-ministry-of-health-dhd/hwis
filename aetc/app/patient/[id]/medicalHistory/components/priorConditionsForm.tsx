@@ -109,7 +109,7 @@ export const PriorConditionsForm = ({ onSubmit, onSkip, onPrevious }: Prop) => {
 
   const handleSubmit = async () => {
     if (formValues.none) {
-      onSkip();
+      onSubmit({ none: true });
       return;
     }
     onSubmit(formValues);

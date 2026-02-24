@@ -238,13 +238,13 @@ export const AllergiesForm = ({ onSubmit, onSkip, onPrevious }: Prop) => {
   };
 
   const handleSubmit = async () => {
-    await schema.validate(formValues);
-
     // If no allergies, skip the form
     if (formValues.noAllergies) {
-      onSkip();
+      onSubmit({ noAllergies: true });
       return;
     }
+
+    await schema.validate(formValues);
 
     const allergyListKey = concepts.ALLERGY;
 

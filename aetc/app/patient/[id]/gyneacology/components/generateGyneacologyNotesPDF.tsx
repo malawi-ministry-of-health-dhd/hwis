@@ -26,10 +26,22 @@ export const GenerateGyneacologyNotesPDF = forwardRef<GyneacologyNotesPDFRef, Ge
         const [row, setRow] = useState<any>(null);
         const { params } = useParameters();
         const { data: patientVisits } = getPatientVisitTypes(params.id as string);
-        const { data: encountersData } = getPatientsEncounters(params.id as string);
         const [activeVisit, setActiveVisit] = useState<Visit | undefined>(undefined);
+        const { data: encountersData } = getPatientsEncounters(
+            params.id as string,
+            activeVisit?.uuid ? `visit=${activeVisit.uuid}` : undefined
+        );
 
-        const [complaintsInfo, setComplaintsInfo] = useState({
+        useEffect(() => {
+            if (patientVisits) {
+                const active = patientVisits.find((visit) => !visit.date_stopped);
+                if (active) {
+                    setActiveVisit(active as unknown as Visit);
+                }
+            }
+        }, [patientVisits]);
+
+        const initialComplaintsInfo = {
             chiefComplaint: "",
             illnessHistory: "",
             lnmp: "",
@@ -77,9 +89,11 @@ export const GenerateGyneacologyNotesPDF = forwardRef<GyneacologyNotesPDFRef, Ge
             plan: "",
             immediateIntervention: "",
             admittingOfficer: "", // Default value
+            completedDateTime: "",
 
 
-        });
+        };
+        const [complaintsInfo, setComplaintsInfo] = useState(initialComplaintsInfo);
         // Ref for printing
         const contentRef = useRef<HTMLDivElement>(null);
 
@@ -96,9 +110,19 @@ export const GenerateGyneacologyNotesPDF = forwardRef<GyneacologyNotesPDFRef, Ge
             }
         }));
 
+        const visitEncounters = React.useMemo(() => {
+            if (!encountersData || !activeVisit?.uuid) return [];
+            return encountersData.filter(
+                (encounter: any) => encounter?.visit?.uuid === activeVisit.uuid
+            );
+        }, [encountersData, activeVisit?.uuid]);
+
         useEffect(() => {
-            if (!encountersData) return;
-            const gyneacologyEncounter = encountersData
+            if (!activeVisit?.uuid || visitEncounters.length === 0) {
+                setComplaintsInfo(initialComplaintsInfo);
+                return;
+            }
+            const gyneacologyEncounter = visitEncounters
                 ?.filter(
                     (encounter) =>
                         encounter.encounter_type &&
@@ -112,6 +136,7 @@ export const GenerateGyneacologyNotesPDF = forwardRef<GyneacologyNotesPDFRef, Ge
 
             if (gyneacologyEncounter && gyneacologyEncounter.obs) {
                 const admittingOfficer = gyneacologyEncounter.created_by || "";
+                const completedDateTime = gyneacologyEncounter.encounter_datetime || "";
                 const newComplaintsInfo = {
                     chiefComplaint: "",
                     illnessHistory: "",
@@ -161,6 +186,7 @@ export const GenerateGyneacologyNotesPDF = forwardRef<GyneacologyNotesPDFRef, Ge
                     plan: "",
                     immediateIntervention: "",
                     admittingOfficer: admittingOfficer, // Use the created_by field as the admitting officer
+                    completedDateTime: completedDateTime,
 
                 };
 
@@ -303,12 +329,43 @@ export const GenerateGyneacologyNotesPDF = forwardRef<GyneacologyNotesPDFRef, Ge
                 });
                 setComplaintsInfo(newComplaintsInfo);
             }
-        }, [encountersData]);
+        }, [visitEncounters, activeVisit?.uuid]);
+
+        const formatDateTime = (dateTimeString: string) => {
+            if (!dateTimeString) return "";
+            const date = new Date(dateTimeString);
+            return date.toLocaleString('en-GB', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        };
 
         return (
             <div ref={contentRef} className="printable-content">
                 <div className={showPreview ? "print-preview" : "print-only"}>
                     <PatientInfoTab />
+                    {(complaintsInfo.admittingOfficer || complaintsInfo.completedDateTime) && (
+                        <div style={{ marginBottom: "20px", padding: "10px", backgroundColor: "#f5f5f5", borderRadius: "4px" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "20px" }}>
+                                {complaintsInfo.admittingOfficer && (
+                                    <p style={{ margin: "5px 0" }}>
+                                        <strong>Admitting Officer: </strong>
+                                        {complaintsInfo.admittingOfficer}
+                                    </p>
+                                )}
+                                {complaintsInfo.completedDateTime && (
+                                    <p style={{ margin: "5px 0" }}>
+                                        <strong>Date & Time Completed: </strong>
+                                        {formatDateTime(complaintsInfo.completedDateTime)}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     <h1 style={{ textAlign: "center", marginBottom: "20px" }}>Gyneacology Ward</h1>
 
                     {Object.values(complaintsInfo).every(

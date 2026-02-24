@@ -96,7 +96,7 @@ export default function AwaitingSpecialityReviewForm({ openPatientSummary }: { o
                 obsDatetime: currentDateTime,
               },
               {
-                concept: concepts.DATE,
+                concept: concepts.DATE_OF_ABSCONDING,
                 value: values.reviewDate,
                 obsDatetime: currentDateTime,
               },
