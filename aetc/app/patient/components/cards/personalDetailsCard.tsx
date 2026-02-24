@@ -282,7 +282,16 @@ export const PersonalDetailsCard = ({ sx }: { sx?: any }) => {
             label="MRN:"
             value={getNationalIdIdentifiers(patient?.identifiers)}
           />
-          <LabelValue label="Gender:" value={patient?.gender} />
+          <LabelValue
+            label="Gender:"
+            value={
+              patient?.gender === "F"
+                ? "Female"
+                : patient?.gender === "M"
+                  ? "Male"
+                  : patient?.gender
+            }
+          />
           <LabelValue
             label="Age:"
             value={`  ${
