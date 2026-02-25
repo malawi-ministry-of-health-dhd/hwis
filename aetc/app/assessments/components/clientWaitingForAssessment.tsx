@@ -90,7 +90,11 @@ export const ClientWaitingForAssessment = () => {
 
   useEffect(() => {
     if (data) {
-      setPatientsData(data);
+      const mappedRows = data.map((item: any) => ({
+        ...item,
+        id: item?.patient_uuid || item?.id || item?.uuid,
+      }));
+      setPatientsData(mappedRows);
     }
   }, [data]);
 
@@ -154,7 +158,7 @@ export const ClientWaitingForAssessment = () => {
 
   const handleDelete = (deletedId: string) => {
     const updatedData = patientsData.filter(
-      (item: any) => item.uuid !== deletedId
+      (item: any) => item.id !== deletedId
     );
     setPatientsData(updatedData);
     setDeleted(deletedId);
@@ -309,7 +313,7 @@ export const ClientWaitingForAssessment = () => {
           setDeleted={(id: any) => handleDelete(id)}
           triage={row.triage_result}
           visitId={row.visit_uuid}
-          id={row.uuid}
+          id={row.id}
         />
       ),
       age: `${calculateAge(row.birthdate)}yrs`,
@@ -541,7 +545,10 @@ const CardAction = ({
         </Tooltip>
 
         <Tooltip title="Print barcode" arrow>
-          <PrinterBarcodeButton sx={{ width: "30%" }} uuid={patient?.uuid} />
+          <PrinterBarcodeButton
+            sx={{ width: "30%" }}
+            uuid={patient?.id || patient?.uuid}
+          />
         </Tooltip>
       </Box>
     </Box>
@@ -588,7 +595,7 @@ export function BasicMenu({ patient }: { patient: any }) {
             sx={{ color: "ButtonText" }}
             variant="text"
             onClose={handleClose}
-            uuid={patient?.uuid}
+            uuid={patient?.id || patient?.uuid}
           />
         </MenuItem>
         <MenuItem sx={{ justifyContent: "flex-start" }}>
