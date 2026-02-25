@@ -24,12 +24,12 @@ export const getPatients = () => getAll<Array<any>>(endPoint);
 
 export const getDailyVisits = (queryParam?: string) =>
   getAll<Person[]>(
-    `/visits?date_stopped&category=${queryParam}&paginate=false`
+    `/aetc_visit_lists?category=${queryParam}&paginate=false`
   );
 
 export const getDailyVisitsPaginated = (queryParam?: string) =>
   getAll<DailyVisitPaginated>(
-    `/visits?date_stopped&${queryParam}&paginate=true`
+    `/aetc_visit_lists?${queryParam}&paginate=true`
   );
 
 // getAll<Person[]>(`/daily_visits?category=${queryParam}`);

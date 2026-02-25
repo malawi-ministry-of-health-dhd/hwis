@@ -1,6 +1,6 @@
 "use client";
 import { PrescreeningForm } from "../components/preScreeningForm";
-import { getActivePatientDetails, useNavigation, useParameters } from "@/hooks";
+import { getActivePatientDetails, useNavigation } from "@/hooks";
 import {
   RegistrationMainHeader,
   RegistrationDescriptionText,
@@ -8,31 +8,59 @@ import {
 } from "@/app/registration/components/common";
 
 import { MainGrid } from "@/components";
-import {
-  addEncounter,
-  fetchConceptAndCreateEncounter,
-} from "@/hooks/encounter";
+import { fetchConceptAndCreateEncounter } from "@/hooks/encounter";
 import { concepts, encounters } from "@/constants";
 import { closeCurrentVisit } from "@/hooks/visit";
 import { useFormLoading } from "@/hooks/formLoading";
 import { OperationSuccess } from "@/components/operationSuccess";
 import { FormError } from "@/components/formError";
 import { CustomizedProgressBars } from "@/components/loader";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigation } from "@/app/components/navigation";
 import { useServerTime } from "@/contexts/serverTimeContext";
+import { getOnePatient } from "@/hooks/patientReg";
+import { moveAetcVisitListPatient } from "@/services/aetcVisitList";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function Prescreening() {
   const { ServerTime } = useServerTime();
   const { activeVisit, patientId } = getActivePatientDetails();
   const { navigateTo } = useNavigation();
+  const queryClient = useQueryClient();
+  const [shouldMoveToRegistration, setShouldMoveToRegistration] =
+    useState(true);
+
+  const { data: patient, isError: patientLookupError } = getOnePatient(
+    patientId as string,
+  );
 
   const {
     mutate: createEncounter,
-    isPending,
     isSuccess,
+    isError: encounterError,
   } = fetchConceptAndCreateEncounter();
-  const { mutate: closeVisit, isSuccess: visitClosed } = closeCurrentVisit();
+  const { mutate: closeVisit, isError: closeVisitError } = closeCurrentVisit();
+  const {
+    mutate: movePatientToRegistration,
+    isSuccess: patientMovedToRegistration,
+    isError: movePatientError,
+  } = useMutation({
+    mutationFn: (payload: any) => {
+      const { patient_id: listPatientId, ...attributes } = payload;
+
+      return moveAetcVisitListPatient(listPatientId, attributes).then(
+        (response) => response.data,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["screening"] });
+      queryClient.invalidateQueries({ queryKey: ["registration"] });
+      queryClient.invalidateQueries({ queryKey: ["visits"] });
+    },
+  });
+
+  const listPatientId = patient?.patient_id;
+
   const {
     loading,
     setLoading,
@@ -47,11 +75,51 @@ export default function Prescreening() {
   } = useFormLoading();
 
   useEffect(() => {
-    if (isSuccess) {
+    if (!isSuccess) return;
+
+    if (!shouldMoveToRegistration) {
+      setCompleted(1);
+      setLoading(false);
+      return;
+    }
+
+    if (patientLookupError) {
+      setMessage("failed to move patient to registration list");
+      setError(true);
+      setLoading(false);
+      return;
+    }
+
+    if (!listPatientId) return;
+
+    setMessage("moving patient to registration list...");
+    movePatientToRegistration({
+      patient_id: listPatientId,
+      category: "registration",
+      from_category: "screening",
+    });
+  }, [
+    isSuccess,
+    shouldMoveToRegistration,
+    patientLookupError,
+    listPatientId,
+    movePatientToRegistration,
+  ]);
+
+  useEffect(() => {
+    if (patientMovedToRegistration) {
       setCompleted(1);
       setLoading(false);
     }
-  }, [isSuccess]);
+  }, [patientMovedToRegistration]);
+
+  useEffect(() => {
+    if (encounterError || movePatientError || closeVisitError) {
+      setMessage("failed to complete screening");
+      setError(true);
+      setLoading(false);
+    }
+  }, [encounterError, movePatientError, closeVisitError]);
 
   const handleSubmit = (values: any) => {
     setShowForm(false);
@@ -60,6 +128,8 @@ export default function Prescreening() {
     setMessage("add Screening data... ");
 
     const dateTime = ServerTime.getServerTimeString();
+    const referredToServiceArea = Boolean(values[concepts.PATIENT_REFERRED_TO]);
+    setShouldMoveToRegistration(!referredToServiceArea);
 
     createEncounter({
       encounterType: encounters.SCREENING_ENCOUNTER,
@@ -85,7 +155,7 @@ export default function Prescreening() {
       ],
     });
 
-    if (Boolean(values[concepts.PATIENT_REFERRED_TO])) {
+    if (referredToServiceArea) {
       closeVisit(activeVisit as string);
     }
   };

@@ -32,6 +32,7 @@ import { FaBarcode } from "react-icons/fa6";
 import { PatientSearchResultsDialog } from "./components/patientsSearch";
 import { DDESearch } from "@/interfaces";
 import { useServerTime } from "@/contexts/serverTimeContext";
+import { addPatientToAetcVisitList } from "@/hooks/aetcVisitList";
 
 function InitialRegistration() {
   const { init, ServerTime } = useServerTime();
@@ -78,6 +79,12 @@ function InitialRegistration() {
     isSuccess: encounterCreated,
     isError: encounterError,
   } = fetchConceptAndCreateEncounter();
+
+  const {
+    mutate: createAetcVisitList,
+    isSuccess: aetcVisitListCreated,
+    isError: aetcVisitListError,
+  } = addPatientToAetcVisitList();
 
   const {
     data: visitNumberResponse,
@@ -164,17 +171,64 @@ function InitialRegistration() {
   useEffect(() => {
     if (encounterCreated) {
       setCompleted(4);
-      setLoading(false);
-      setMessage("done");
+      setMessage("adding patient to waiting list...");
+
+      const patientId = createdUser?.uuid;
+      const visitNumber = visitNumberResponse?.next_visit_number;
+
+      if (!patientId || !visitNumber) {
+        setMessage("failed to add patient to waiting list");
+        setError(true);
+        setLoading(false);
+        return;
+      }
+
+      createAetcVisitList({
+        patient_id: patientId,
+        aetc_visit_number: visitNumber,
+        arrival_time:
+          visit?.date_started ||
+          visit?.start_datetime ||
+          visit?.startDatetime ||
+          ServerTime.getServerTimeString(),
+        given_name:
+          createdUser?.given_name ||
+          createdUser?.person?.names?.[0]?.given_name ||
+          initialValues.firstName,
+        family_name:
+          createdUser?.family_name ||
+          createdUser?.person?.names?.[0]?.family_name ||
+          initialValues.lastName,
+        gender: createdUser?.gender || createdUser?.person?.gender || "N/A",
+        category: "screening",
+      });
     }
   }, [encounterCreated]);
 
   useEffect(() => {
+    if (aetcVisitListCreated) {
+      setCompleted(5);
+      setLoading(false);
+      setMessage("done");
+    }
+  }, [aetcVisitListCreated]);
+
+  useEffect(() => {
     const error =
-      patientError || visitError || visitNumberError || encounterError;
+      patientError ||
+      visitError ||
+      visitNumberError ||
+      encounterError ||
+      aetcVisitListError;
 
     setError(error);
-  }, [patientError, visitError, visitNumberError, encounterError]);
+  }, [
+    patientError,
+    visitError,
+    visitNumberError,
+    encounterError,
+    aetcVisitListError,
+  ]);
 
   const secureLink =
     window.location.protocol === "https:" ||
@@ -184,6 +238,10 @@ function InitialRegistration() {
     setMessage("creating patient");
     setShowForm(false);
     setLoading(true);
+    setInitialValues({
+      firstName: values.firstName,
+      lastName: values.lastName,
+    });
 
     const patient = await createPatient({
       identifiers: [
@@ -229,7 +287,7 @@ function InitialRegistration() {
             The demographics form has been thoughtfully crafted to collect
             patient information, including personal details, contact information
           </RegistrationDescriptionText>
-          {completed == 4 && (
+          {completed == 5 && (
             <OperationSuccess
               title={`Patient Created With Visit Number ${visitNumberResponse?.next_visit_number}`}
               primaryActionText="Register More Patient"
@@ -321,7 +379,7 @@ function InitialRegistration() {
               <br />
               <CustomizedProgressBars
                 message={message}
-                progress={(completed / 4) * 100}
+                progress={(completed / 5) * 100}
               />
             </>
           )}
