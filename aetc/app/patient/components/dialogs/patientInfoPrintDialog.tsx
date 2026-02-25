@@ -17,6 +17,7 @@ import { Obs } from "@/interfaces";
 import { Box, Button, Divider, Grid, Stack, Typography } from "@mui/material";
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { getActivePatientDetails } from "@/hooks";
 
 type Prop = {
   onClose: () => void;
@@ -31,6 +32,8 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
   const [patientLabOrders, setPatientLabOrders] = useState<Array<any>>([]);
   const [printer, setPrinter] = useState("");
   const { selectedVisit } = useVisitDates();
+  const { activeVisit, activeVisitId } = getActivePatientDetails();
+  const [effectiveVisitId, setEffectiveVisitId] = useState<string | number | null>(null);
   const [summaryMeta, setSummaryMeta] = useState<{
     createdBy: string;
     completedAt: string;
@@ -62,13 +65,40 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
   const { data: ordersData } = getPatientLabOrder(params?.id as string);
 
   useEffect(() => {
+    if (selectedVisit?.id) {
+      setEffectiveVisitId(selectedVisit.id);
+      return;
+    }
+    const activeVisitObj = activeVisit as unknown as { uuid?: string } | undefined;
+    if (activeVisitObj?.uuid) {
+      setEffectiveVisitId(activeVisitObj.uuid);
+      return;
+    }
+    if (activeVisitId) {
+      setEffectiveVisitId(activeVisitId);
+      return;
+    }
+    setEffectiveVisitId(null);
+  }, [selectedVisit, activeVisit, activeVisitId]);
+
+  const matchesVisit = (encounter: any) => {
+    if (!effectiveVisitId) return true;
+    const visitIdString = String(effectiveVisitId);
+    if (encounter?.visit?.uuid && String(encounter.visit.uuid) === visitIdString) return true;
+    if (encounter?.visit_id && String(encounter.visit_id) === visitIdString) return true;
+    if (selectedVisit?.id && encounter?.visit_id === selectedVisit.id) return true;
+    return false;
+  };
+
+  useEffect(() => {
     if (data) {
-      const finalDiagnosis = data?.filter(d=>d.visit_id==selectedVisit.id)[0]?.obs?.filter((ob) =>
+      const visitData = data?.filter((d: any) => matchesVisit(d));
+      const finalDiagnosis = visitData?.[0]?.obs?.filter((ob) =>
         ob.names.find((n) => n.name === concepts.FINAL_DIAGNOSIS)
       );
       setDiagnosis(finalDiagnosis);
     }
-  }, [data, selectedVisit]);
+  }, [data, selectedVisit, effectiveVisitId]);
 
   useEffect(() => {
     if (ordersData) {
@@ -78,13 +108,10 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
 
   useEffect(() => {
     if (presentingComplaintsData) {
-      setPresentingComplaints(
-        presentingComplaintsData.filter(
-          (d) => d.visit_id == selectedVisit.id
-        )[0]?.obs
-      );
+      const visitData = presentingComplaintsData.filter((d: any) => matchesVisit(d));
+      setPresentingComplaints(visitData?.[0]?.obs);
     }
-  }, [presentingComplaintsData, selectedVisit]);
+  }, [presentingComplaintsData, selectedVisit, effectiveVisitId]);
 
 
   useEffect(() => {
@@ -93,8 +120,7 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
       // still allow summary meta to be set from disposition
     }
     if (disposition) {
-      const visitDisposition = disposition
-        .filter((d) => d.visit_id == selectedVisit.id)[0];
+      const visitDisposition = disposition.filter((d: any) => matchesVisit(d))[0];
       const dischargedOb = visitDisposition
         ?.obs.find((d: Obs) =>
           d.names.find((n) => n.name == concepts.DISCHARGE_HOME)
@@ -143,7 +169,7 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
         });
       }
     }
-  }, [disposition, selectedVisit]);
+  }, [disposition, selectedVisit, effectiveVisitId]);
 
   const handleOnPrint = async () => {
     const zpl = generatePatientSummaryZPL({

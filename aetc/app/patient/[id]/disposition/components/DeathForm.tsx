@@ -8,20 +8,22 @@ import {
   SearchComboBox,
   FormDatePicker,
   RadioGroupInput,
+  MainButton,
 } from "@/components";
 
 import * as Yup from "yup";
 import { concepts, encounters } from "@/constants";
 import { useParameters } from "@/hooks";
-import { fetchConceptAndCreateEncounter } from "@/hooks/encounter";
+import { fetchConceptAndCreateEncounter, getPatientsEncounters } from "@/hooks/encounter";
 import { getPatientVisitTypes } from "@/hooks/patientReg";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Visit } from "@/interfaces";
 import { closeCurrentVisit } from "@/hooks/visit";
 import { useNavigation } from "@/hooks";
 import { AccordionComponent } from "@/components/accordion";
-import { AccordionWithMedication } from "./AccordionWithMedication"; // ✅ Included
 import { useServerTime } from "@/contexts/serverTimeContext";
+import { toast } from "react-toastify";
+import { Box, Typography } from "@mui/material";
 
 const mortuaryOptions = [
   { id: concepts.QECH, label: "QECH" },
@@ -75,6 +77,23 @@ export default function DeathForm({
   const [activeVisit, setActiveVisit] = useState<Visit | undefined>(undefined);
   const { data: patientVisits } = getPatientVisitTypes(params.id as string);
   const { ServerTime } = useServerTime();
+  const { data: diagnosisEncounters } = getPatientsEncounters(
+    params.id as string,
+    activeVisit?.uuid
+      ? `encounter_type=${encounters.OUTPATIENT_DIAGNOSIS}&visit=${activeVisit.uuid}`
+      : undefined
+  );
+  const isFinalDiagnosisReady = useMemo(
+    () =>
+      (diagnosisEncounters ?? []).some((encounter: any) =>
+        (encounter?.obs ?? []).some(
+          (ob: any) =>
+            ob?.names?.some((n: any) => n?.name === concepts.FINAL_DIAGNOSIS) &&
+            (ob?.value_text ?? ob?.value)
+        )
+      ),
+    [diagnosisEncounters]
+  );
 
   useEffect(() => {
     if (patientVisits) {
@@ -87,6 +106,20 @@ export default function DeathForm({
 
   const handleSubmit = async (values: any) => {
     const currentDateTime = ServerTime.getServerTimeString();
+
+    const hasFinalDiagnosis = (diagnosisEncounters ?? []).some(
+      (encounter: any) =>
+        (encounter?.obs ?? []).some(
+          (ob: any) =>
+            ob?.names?.some((n: any) => n?.name === concepts.FINAL_DIAGNOSIS) &&
+            (ob?.value_text ?? ob?.value)
+        )
+    );
+
+    if (!hasFinalDiagnosis) {
+      toast.error("Final Diagnosis is required before submitting disposition.");
+      return;
+    }
 
     const obs = [
       {
@@ -157,23 +190,15 @@ export default function DeathForm({
     }
   };
 
-  const sections = [
-    {
-      id: "deathForm",
-      title: <h2>Death Form</h2>,
-      content: <DeathFormContent handleSubmit={handleSubmit} />,
-    },
-    {
-      id: "medication",
-      title: <h2>Medication</h2>,
-      content: <AccordionWithMedication />,
-    },
-  ];
-
   return (
     <MainGrid container spacing={2}>
       <MainGrid item xs={12}>
-        <AccordionComponent sections={sections} />
+      <h2>Death Form</h2>
+      <DeathFormContent
+        handleSubmit={handleSubmit}
+        isFinalDiagnosisReady={isFinalDiagnosisReady}
+      />
+        {/* <AccordionComponent sections={sections} /> */}
       </MainGrid>
     </MainGrid>
   );
@@ -181,91 +206,126 @@ export default function DeathForm({
 
 function DeathFormContent({
   handleSubmit,
+  isFinalDiagnosisReady,
 }: {
   handleSubmit: (values: any) => void;
+  isFinalDiagnosisReady: boolean;
 }) {
   return (
     <FormikInit
       initialValues={initialValues}
       validationSchema={validationSchema}
       onSubmit={handleSubmit}
-      submitButtonText="Submit"
+      submitButton={isFinalDiagnosisReady}
     >
-      <MainPaper sx={{ p: 3 }}>
-        <MainGrid container spacing={2}>
-          <MainGrid item xs={12}>
-            <TextInputField
-              id="causeOfDeath"
-              name="causeOfDeath"
-              label="Cause of Death"
-              placeholder="Enter the cause of death"
-              rows={4}
-              multiline
-              sx={{ width: "100%" }}
-            />
-          </MainGrid>
+      <>
+        {!isFinalDiagnosisReady && (
+          <Box
+            sx={{
+              mb: 2,
+              p: 1.5,
+              bgcolor: "#fff3cd",
+              border: "1px solid #ffeeba",
+              borderRadius: "4px",
+            }}
+          >
+            <Typography variant="body2" color="text.primary">
+              Final Diagnosis is required before submitting disposition.
+            </Typography>
+          </Box>
+        )}
+        <MainPaper sx={{ p: 3 }}>
+          <MainGrid container spacing={2}>
+            <MainGrid item xs={12}>
+              <TextInputField
+                id="causeOfDeath"
+                name="causeOfDeath"
+                label="Cause of Death"
+                placeholder="Enter the cause of death"
+                rows={4}
+                multiline
+                sx={{ width: "100%" }}
+                disabled={!isFinalDiagnosisReady}
+              />
+            </MainGrid>
 
-          <MainGrid item xs={12} md={6}>
-            <RadioGroupInput
-              name="familyInformed"
-              label="Has the family been informed?"
-              options={[
-                { value: concepts.YES, label: "Yes" },
-                { value: concepts.NO, label: "No" },
-              ]}
-            />
-          </MainGrid>
+            <MainGrid item xs={12} md={6}>
+              <RadioGroupInput
+                name="familyInformed"
+                label="Has the family been informed?"
+                options={[
+                  { value: concepts.YES, label: "Yes" },
+                  { value: concepts.NO, label: "No" },
+                ]}
+                disabled={!isFinalDiagnosisReady}
+              />
+            </MainGrid>
 
-          <MainGrid item xs={12} md={6}>
-            <SearchComboBox
-              name="relationshipToDeceased"
-              label="If yes, relationship to deceased"
-              options={relationshipOptions}
-              sx={{ width: "100%" }}
-              multiple={false}
-            />
-          </MainGrid>
+            <MainGrid item xs={12} md={6}>
+              <SearchComboBox
+                name="relationshipToDeceased"
+                label="If yes, relationship to deceased"
+                options={relationshipOptions}
+                sx={{ width: "100%" }}
+                multiple={false}
+                disabled={!isFinalDiagnosisReady}
+              />
+            </MainGrid>
 
-          <MainGrid item xs={12} md={6}>
-            <SearchComboBox
-              name="mortuary"
-              label="Mortuary to take the deceased"
-              options={mortuaryOptions}
-              sx={{ width: "100%" }}
-              multiple={false}
-            />
-          </MainGrid>
+            <MainGrid item xs={12} md={6}>
+              <SearchComboBox
+                name="mortuary"
+                label="Mortuary to take the deceased"
+                options={mortuaryOptions}
+                sx={{ width: "100%" }}
+                multiple={false}
+                disabled={!isFinalDiagnosisReady}
+              />
+            </MainGrid>
 
-          <MainGrid item xs={12} md={6}>
-            <RadioGroupInput
-              name="lastOfficeConducted"
-              label="Was the last office conducted?"
-              options={[
-                { value: concepts.YES, label: "Yes" },
-                { value: concepts.NO, label: "No" },
-              ]}
-            />
-          </MainGrid>
+            <MainGrid item xs={12} md={6}>
+              <RadioGroupInput
+                name="lastOfficeConducted"
+                label="Was the last office conducted?"
+                options={[
+                  { value: concepts.YES, label: "Yes" },
+                  { value: concepts.NO, label: "No" },
+                ]}
+                disabled={!isFinalDiagnosisReady}
+              />
+            </MainGrid>
 
-          <MainGrid item xs={12} md={6}>
-            <TextInputField
-              id="healthWorkerName"
-              name="healthWorkerName"
-              label="Name of Health Worker who conducted the last office"
-              placeholder="Enter health worker's name"
-              sx={{ width: "100%" }}
-            />
-          </MainGrid>
+            <MainGrid item xs={12} md={6}>
+              <TextInputField
+                id="healthWorkerName"
+                name="healthWorkerName"
+                label="Name of Health Worker who conducted the last office"
+                placeholder="Enter health worker's name"
+                sx={{ width: "100%" }}
+                disabled={!isFinalDiagnosisReady}
+              />
+            </MainGrid>
 
-          <MainGrid item xs={12} md={6}>
-            <FormDatePicker
-              name="lastOfficeDate"
-              label="Date of Last Office"
-              sx={{ width: "100%" }}
-            />
+            <MainGrid item xs={12} md={6}>
+              <FormDatePicker
+                name="lastOfficeDate"
+                label="Date of Last Office"
+                sx={{ width: "100%" }}
+                disabled={!isFinalDiagnosisReady}
+              />
+            </MainGrid>
           </MainGrid>
-        </MainGrid>
-      </MainPaper>
+        </MainPaper>
+        {!isFinalDiagnosisReady && (
+          <MainButton
+            sx={{ mt: 3 }}
+            title="Submit"
+            type="submit"
+            disabled
+            onClick={() => {}}
+          />
+        )}
+      </>
     </FormikInit>
   );
 }

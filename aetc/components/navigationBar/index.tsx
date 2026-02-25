@@ -55,7 +55,10 @@ export function NavigationBar({
   );
   const searchOpen = Boolean(searchAnchorEl) && searchText.trim() !== "";
   const searchPopoverId = searchOpen ? "search-popover" : undefined;
-  const isAdmin = isAuthorizedForRoles([roles.ADMIN]);
+  const isSearchAuthorized = isAuthorizedForRoles([
+    roles.ADMIN,
+    roles.REGISTRATION_CLERK,
+  ]);
 
   const [search, setSearch] = useState({
     firstName: "",
@@ -78,7 +81,7 @@ export function NavigationBar({
   const debouncedSearch = useDebounce(searchText, 300);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isSearchAuthorized) return;
 
     if (debouncedSearch && debouncedSearch.trim() !== "") {
       const searchInput = document.getElementById("search-input");
@@ -86,7 +89,7 @@ export function NavigationBar({
     } else {
       setSearchAnchorEl(null);
     }
-  }, [debouncedSearch, isAdmin]);
+  }, [debouncedSearch, isSearchAuthorized]);
 
   useEffect(() => {
     if (!debouncedSearch || debouncedSearch.trim() === "") return;
@@ -133,7 +136,7 @@ export function NavigationBar({
   const { refetch: refetchNPID, data: dataNPID } = searchNPID(search.firstName);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isSearchAuthorized) return;
 
     if (search.firstName) {
       refetchLocal();
@@ -142,7 +145,7 @@ export function NavigationBar({
     if (search.firstName && search.lastName && search.gender) {
       // refetchDDE();
     }
-  }, [search, refetchDDE, refetchLocal, isAdmin]);
+  }, [search, refetchDDE, refetchLocal, isSearchAuthorized]);
 
   const splitSearchText = (searchText: string) => {
     const splittedArray = searchText.split(" ");
@@ -284,13 +287,13 @@ export function NavigationBar({
                     </IconButton>
                   </Paper> */}
               <Popover
-                open={!isAdmin && Boolean(searchAnchorEl)}
+                open={!isSearchAuthorized && Boolean(searchAnchorEl)}
                 anchorEl={searchAnchorEl}
                 onClose={handleSearchPopoverClose}
                 anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
               >
                 <Typography sx={{ p: 1, fontSize: "0.85rem" }}>
-                  Search available to Admin only
+                  Search available to Admin and Registration Clerk only
                 </Typography>
               </Popover>
 
@@ -302,9 +305,9 @@ export function NavigationBar({
                   display: "flex",
                   alignItems: "center",
                   minWidth: "45%",
-                  opacity: isAdmin ? 1 : 0.5,
-                  pointerEvents: isAdmin ? "auto" : "none",
-                  cursor: isAdmin ? "text" : "not-allowed",
+                  opacity: isSearchAuthorized ? 1 : 0.5,
+                  pointerEvents: isSearchAuthorized ? "auto" : "none",
+                  cursor: isSearchAuthorized ? "text" : "not-allowed",
                 }}
               >
                 <IconButton sx={{ p: "10px" }} aria-label="search">
@@ -316,20 +319,20 @@ export function NavigationBar({
                   onChange={handleSearchChange}
                   sx={{ ml: 1, flex: 1 }}
                   placeholder={
-                    isAdmin
+                    isSearchAuthorized
                       ? "Add or search for a client by MRN, name, or by scanning a barcode/QR code."
-                      : "Search available to Admin only"
+                      : "Search available to Admin and Registration Clerk only"
                   }
-                  disabled={!isAdmin}
+                  disabled={!isSearchAuthorized}
                 />
 
                 <IconButton
                   color="primary"
                   sx={{ p: "10px", color: "#000" }}
                   aria-label="add new patient"
-                  disabled={!isAdmin}
+                  disabled={!isSearchAuthorized}
                   onClick={() => {
-                    if (isAdmin) {
+                    if (isSearchAuthorized) {
                       navigateTo(`/registration/new`);
                     }
                   }}

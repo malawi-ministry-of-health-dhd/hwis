@@ -711,10 +711,121 @@ export const formatClinicalNotesData = (
 
     {
       title: "Disposition Notes",
-      content: formatDisposition(
-        [...getEncountersByType(encounters.AWAITING_SPECIALTY)
-          , ...getEncountersByType(encounters.DISPOSITION)]
-      ),
+      content: (() => {
+        const dispositionData = formatDisposition(
+          [
+            ...getEncountersByType(encounters.AWAITING_SPECIALTY),
+            ...getEncountersByType(encounters.DISPOSITION),
+          ]
+        );
+
+        return (
+          <Box>
+            <style>
+              {`
+                .disposition-grid {
+                  display: grid;
+                  grid-template-columns: repeat(3, 1fr);
+                  gap: 12px;
+                  width: 100%;
+                }
+
+                .disposition-item {
+                  border: 1px solid #e0e0e0;
+                  border-radius: 6px;
+                  padding: 10px;
+                  background-color: #fafafa;
+                  min-height: 100px;
+                  display: flex;
+                  flex-direction: column;
+                }
+
+                .disposition-title {
+                  font-weight: bold;
+                  margin-bottom: 6px;
+                  margin-top: 0;
+                  font-size: 0.9rem;
+                  border-bottom: 1px solid #ddd;
+                  padding-bottom: 4px;
+                }
+
+                .disposition-content {
+                  padding-left: 8px;
+                  font-size: 0.85rem;
+                  flex-grow: 1;
+                }
+
+                .disposition-empty {
+                  color: #999;
+                  font-style: italic;
+                  font-size: 0.8rem;
+                }
+
+                @media print {
+                  .disposition-grid {
+                    gap: 8px;
+                  }
+
+                  .disposition-item {
+                    padding: 6px;
+                    min-height: auto;
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                  }
+
+                  .disposition-title {
+                    font-size: 0.8rem;
+                    margin-bottom: 4px;
+                  }
+
+                  .disposition-content {
+                    font-size: 0.75rem;
+                    padding-left: 4px;
+                  }
+                }
+              `}
+            </style>
+
+            <div className="disposition-grid">
+              {dispositionData.map((section, index) => {
+                const hasContent =
+                  Array.isArray(section?.children)
+                    ? section.children.length > 0
+                    : Boolean(section?.children);
+
+                return (
+                  <div key={index} className="disposition-item">
+                    <h4 className="disposition-title">
+                      {section.heading ?? "Untitled"}
+                    </h4>
+                    <div className="disposition-content">
+                      {hasContent ? (
+                        <RenderNotesChildren children={section.children as NotesChild[]} />
+                      ) : (
+                        <div className="disposition-empty">Notes not entered</div>
+                      )}
+                    </div>
+                    {section.user && (
+                      <div
+                        style={{
+                          color: "#7f8c8d",
+                          fontSize: "14px",
+                          letterSpacing: "0.2px",
+                          marginTop: "8px",
+                          fontStyle: "italic",
+                          textAlign: "right",
+                        }}
+                      >
+                        {section.user}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Box>
+        );
+      })(),
     },
   ];
 };

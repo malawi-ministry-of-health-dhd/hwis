@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo } from "react";
 import { useReactToPrint } from "react-to-print";
 import {
   MainGrid,
@@ -9,16 +9,17 @@ import {
   SearchComboBox,
   RadioGroupInput,
   PatientInfoTab,
+  MainButton,
 } from "@/components";
 import { concepts, encounters } from "@/constants";
 import { useParameters, getFacilities } from "@/hooks";
 import {
   addEncounter,
   fetchConceptAndCreateEncounter,
+  getPatientsEncounters,
 } from "@/hooks/encounter";
 import { getPatientVisitTypes } from "@/hooks/patientReg";
 import * as Yup from "yup";
-import { toast } from "react-toastify";
 import { Visit } from "@/interfaces";
 import { closeCurrentVisit } from "@/hooks/visit";
 import { useNavigation } from "@/hooks";
@@ -30,6 +31,8 @@ import { AccordionWithMedication } from "./AccordionWithMedication";
 import { getConceptSet } from "@/hooks/getConceptSet";
 import { useServerTime } from "@/contexts/serverTimeContext";
 import { getServiceAreas } from "@/hooks/getServiceAreas";
+import { toast } from "react-toastify";
+import { Box, Typography } from "@mui/material";
 
 export const dispositionFormConfig = {
   dischargeHome: {
@@ -318,6 +321,23 @@ export default function DischargeHomeForm({
   const { mutate: submitEncounter } = fetchConceptAndCreateEncounter();
   const [activeVisit, setActiveVisit] = useState<Visit | undefined>(undefined);
   const { data: patientVisits } = getPatientVisitTypes(params.id as string);
+  const { data: diagnosisEncounters } = getPatientsEncounters(
+    params.id as string,
+    activeVisit?.uuid
+      ? `encounter_type=${encounters.OUTPATIENT_DIAGNOSIS}&visit=${activeVisit.uuid}`
+      : undefined
+  );
+  const isFinalDiagnosisReady = useMemo(
+    () =>
+      (diagnosisEncounters ?? []).some((encounter: any) =>
+        (encounter?.obs ?? []).some(
+          (ob: any) =>
+            ob?.names?.some((n: any) => n?.name === concepts.FINAL_DIAGNOSIS) &&
+            (ob?.value_text ?? ob?.value)
+        )
+      ),
+    [diagnosisEncounters]
+  );
 
   const { init, ServerTime } = useServerTime();
 
@@ -342,6 +362,20 @@ export default function DischargeHomeForm({
 
   const handleSubmit = async (values: any, serviceAreas: any) => {
     const currentDateTime = ServerTime.getServerTimeString();
+
+    const hasFinalDiagnosis = (diagnosisEncounters ?? []).some(
+      (encounter: any) =>
+        (encounter?.obs ?? []).some(
+          (ob: any) =>
+            ob?.names?.some((n: any) => n?.name === concepts.FINAL_DIAGNOSIS) &&
+            (ob?.value_text ?? ob?.value)
+        )
+    );
+
+    if (!hasFinalDiagnosis) {
+      toast.error("Final Diagnosis is required before submitting disposition.");
+      return;
+    }
 
     // Prepare service area information
     let serviceAreaValue = values.specialistClinic;
@@ -423,6 +457,11 @@ export default function DischargeHomeForm({
 
   const sections = [
     {
+      id: "medications",
+      title: <h2>Prescribe Medications</h2>,
+      content: <AccordionWithMedication />,
+    },
+    {
       id: "DischargeHome",
       title: <h2>Discharge Home</h2>,
       content: (
@@ -431,14 +470,11 @@ export default function DischargeHomeForm({
           setOtherId={setOtherId}
           otherId={otherId}
           contentRef={contentRef}
+          isFinalDiagnosisReady={isFinalDiagnosisReady}
         />
       ),
     },
-    {
-      id: "medications",
-      title: <h2>Prescribe Medications</h2>,
-      content: <AccordionWithMedication />,
-    },
+  
   ];
 
   return (
@@ -455,11 +491,13 @@ const DischargeForm = ({
   contentRef,
   setOtherId,
   otherId,
+  isFinalDiagnosisReady,
 }: {
   handleSubmit: (values: any, serviceAreas: any) => void;
   contentRef: React.RefObject<HTMLDivElement>;
   setOtherId: (id: string | null) => void;
   otherId: string | null;
+  isFinalDiagnosisReady: boolean;
 }) => {
   const { data: facilities } = getFacilities();
   // Service Areas state
@@ -499,7 +537,7 @@ const DischargeForm = ({
         initialValues={initialValues}
         validationSchema={getValidationSchema()}
         onSubmit={(values) => handleSubmit(values, serviceAreaOptions)}
-        submitButtonText="Submit"
+        submitButton={isFinalDiagnosisReady}
       >
         {({ values, setFieldValue }) => {
           // Handle specialistClinic change for "Other" option
@@ -514,6 +552,21 @@ const DischargeForm = ({
 
           return (
             <>
+              {!isFinalDiagnosisReady && (
+                <Box
+                  sx={{
+                    mb: 2,
+                    p: 1.5,
+                    bgcolor: "#fff3cd",
+                    border: "1px solid #ffeeba",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <Typography variant="body2" color="text.primary">
+                    Final Diagnosis is required before submitting disposition.
+                  </Typography>
+                </Box>
+              )}
               <div ref={contentRef} className="printable-content">
                 <div className="print-only">
                   <PatientInfoTab />
@@ -566,6 +619,7 @@ const DischargeForm = ({
                       multiline
                       rows={3}
                       placeholder="Write discharge notes"
+                      disabled={!isFinalDiagnosisReady}
                     />
                   </MainGrid>
 
@@ -579,6 +633,7 @@ const DischargeForm = ({
                       multiline
                       rows={3}
                       placeholder="Write the discharge plan"
+                      disabled={!isFinalDiagnosisReady}
                     />
                   </MainGrid>
 
@@ -592,6 +647,7 @@ const DischargeForm = ({
                       multiline
                       rows={3}
                       placeholder="Write specific home care instructions"
+                      disabled={!isFinalDiagnosisReady}
                     />
                   </MainGrid>
                 </MainGrid>
@@ -607,6 +663,7 @@ const DischargeForm = ({
                         { value: concepts.YES, label: "Yes" },
                         { value: concepts.NO, label: "No" },
                       ]}
+                      disabled={!isFinalDiagnosisReady}
                     />
                   </MainGrid>
 
@@ -627,6 +684,7 @@ const DischargeForm = ({
                               : []
                           }
                           multiple={false}
+                          disabled={!isFinalDiagnosisReady}
                         />
                       </MainGrid>
                       {/* Clinics (If applicable) */}
@@ -636,6 +694,7 @@ const DischargeForm = ({
                           label="Clinics (If applicable)"
                           options={serviceAreaOptions}
                           multiple={false}
+                          disabled={!isFinalDiagnosisReady}
                         />
 
                         {/* Only show "Other Service Area" field if "Other" is selected */}
@@ -645,6 +704,7 @@ const DischargeForm = ({
                             name="otherServiceArea"
                             label="Other Service Area"
                             sx={{ mt: 2, width: "100%" }}
+                            disabled={!isFinalDiagnosisReady}
                           />
                         )}
                       </MainGrid>
@@ -652,6 +712,15 @@ const DischargeForm = ({
                   )}
                 </MainGrid>
               </MainGrid>
+              {!isFinalDiagnosisReady && (
+                <MainButton
+                  sx={{ mt: 3 }}
+                  title="Submit"
+                  type="submit"
+                  disabled
+                  onClick={() => {}}
+                />
+              )}
             </>
           );
         }}
