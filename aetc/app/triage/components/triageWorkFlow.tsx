@@ -36,9 +36,12 @@ import { closeCurrentVisit } from "@/hooks/visit";
 import { getObservationValue } from "@/helpers/emr";
 import { PatientTriageBarcodePrinter } from "@/components/barcodePrinterDialogs";
 import { useServerTime } from "@/contexts/serverTimeContext";
+import { moveAetcVisitListPatient } from "@/services/aetcVisitList";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function TriageWorkFlow() {
   const { ServerTime } = useServerTime();
+  const queryClient = useQueryClient();
   const [activeStep, setActiveStep] = useState<number>(0);
   const [formData, setFormData] = useState<any>({});
   const { params } = useParameters();
@@ -129,6 +132,24 @@ export default function TriageWorkFlow() {
   const activeVisit = patientVisits?.find((d) => !Boolean(d.date_stopped));
 
   const { mutate: closeVisit, isSuccess: visitClosed } = closeCurrentVisit();
+  const {
+    mutate: movePatientToAssessment,
+    isSuccess: movedPatientToAssessment,
+    isError: moveToAssessmentError,
+  } = useMutation({
+    mutationFn: (payload: any) => {
+      const { patient_id: patientId, ...attributes } = payload;
+
+      return moveAetcVisitListPatient(patientId, attributes).then(
+        (response) => response.data,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["triage"] });
+      queryClient.invalidateQueries({ queryKey: ["assessments"] });
+      queryClient.invalidateQueries({ queryKey: ["visits"] });
+    },
+  });
 
   const { data } = getPatientsEncounters(params?.id as string);
   const [referral, setReferral] = useState<Encounter>();
@@ -298,10 +319,44 @@ export default function TriageWorkFlow() {
 
   useEffect(() => {
     if (triageResultCreated) {
+      const patientUuid = params.id as string;
+      const selectedCareArea = formData?.serviceArea?.[concepts.CARE_AREA];
+      const otherCareArea =
+        formData?.serviceArea?.[concepts.OTHER_AETC_SERVICE_AREA];
+      const patientCareArea =
+        selectedCareArea?.toString()?.toLowerCase() === "other"
+          ? otherCareArea || selectedCareArea
+          : selectedCareArea || otherCareArea;
+
+      if (!patientUuid) {
+        setMessage("failed to move patient to assessment list");
+        setError(true);
+        setLoading(false);
+        return;
+      }
+
+      setMessage("moving patient to assessment list...");
+      const movePayload: any = {
+        patient_id: patientUuid,
+        category: "assessment",
+        from_category: "triage",
+        triage_result: triageResult,
+      };
+
+      if (patientCareArea) {
+        movePayload.patient_care_area = patientCareArea;
+      }
+
+      movePatientToAssessment(movePayload);
+    }
+  }, [triageResultCreated]);
+
+  useEffect(() => {
+    if (movedPatientToAssessment) {
       setCompleted(7);
       setLoading(false);
     }
-  }, [triageResultCreated]);
+  }, [movedPatientToAssessment]);
 
   // useEffect(() => {
   //   if (painCreated) {
@@ -318,7 +373,8 @@ export default function TriageWorkFlow() {
       bloodError ||
       disabilityError ||
       triageResultError ||
-      painError;
+      painError ||
+      moveToAssessmentError;
     setError(error);
   }, [
     presentingError,
@@ -328,6 +384,7 @@ export default function TriageWorkFlow() {
     disabilityError,
     painError,
     triageResultError,
+    moveToAssessmentError,
   ]);
 
   const handlePersistentPain = (values: any) => {
