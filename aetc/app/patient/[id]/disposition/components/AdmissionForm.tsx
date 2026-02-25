@@ -174,14 +174,14 @@ const wardOptions = [
         id: concepts.MAIN_LABOUR_WARD,
         label: "Main Labour ward",
     },
-    {
-        id: concepts.FOUR_A_FEMALE_WARD,
-        label: "4A Female ward",
-    },
-    {
-        id: concepts.FOUR_A_HDU,
-        label: "4A HDU",
-    },
+    // {
+    //     id: concepts.FOUR_A_FEMALE_WARD,
+    //     label: "4A Female ward",
+    // },
+    // {
+    //     id: concepts.FOUR_A_HDU,
+    //     label: "4A HDU",
+    // },
 
     {
         id: concepts.ANTENATAL_WARD,
