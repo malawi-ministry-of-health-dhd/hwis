@@ -1,5 +1,7 @@
+import { concepts, encounters } from "@/constants";
 import { Concept, Obs } from "@/interfaces";
 import { queryClient } from "@/providers";
+import { moveAetcVisitListPatient } from "@/services/aetcVisitList";
 import {
   createEncounter,
   getPatientEncounters,
@@ -7,6 +9,119 @@ import {
 } from "@/services/encounter";
 import { getAll } from "@/services/httpService";
 import { useQueryClient, useMutation, useQuery } from "@tanstack/react-query";
+
+type AetcMovePayload = {
+  category: "disposition" | "awaiting_speciality";
+  from_category: "assessment";
+  disposition_type: string;
+  destination?: string;
+  department?: string;
+};
+
+const DISPOSITION_CONCEPTS = new Set<string>([
+  concepts.DISCHARGE_HOME,
+  concepts.ADMISSION,
+  concepts.AWAITING_SPECIALITY_REVIEW,
+  concepts.DEATH,
+  concepts.ABSCONDED,
+  concepts.REFUSED_HOSPITAL_TREATMENT,
+  concepts.TRANSFER_OUT,
+  concepts.SHORT_STAY,
+]);
+
+const normalizeObservations = (obs: any): Obs[] => {
+  if (Array.isArray(obs)) return obs;
+  return obs ? [obs] : [];
+};
+
+const getGroupMemberValue = (observation: any, concept: string) =>
+  observation?.groupMembers?.find((member: any) => member?.concept === concept)
+    ?.value;
+
+const buildAetcDispositionMovePayload = (
+  encounter: any,
+  observations: Obs[],
+): AetcMovePayload | null => {
+  const encounterType = encounter?.encounterType;
+
+  if (encounterType === encounters.AWAITING_SPECIALTY) {
+    const awaitingSpecialityObservation = observations.find(
+      (observation: any) =>
+        observation?.concept === concepts.AWAITING_SPECIALITY_REVIEW,
+    );
+
+    if (!awaitingSpecialityObservation) return null;
+
+    const department = getGroupMemberValue(
+      awaitingSpecialityObservation,
+      concepts.SPECIALITY_DEPARTMENT,
+    );
+
+    return {
+      category: "awaiting_speciality",
+      from_category: "assessment",
+      disposition_type: concepts.AWAITING_SPECIALITY_REVIEW,
+      ...(department ? { department } : {}),
+    };
+  }
+
+  if (encounterType !== encounters.DISPOSITION) return null;
+
+  const dispositionObservation = observations.find((observation: any) =>
+    DISPOSITION_CONCEPTS.has(observation?.concept),
+  );
+
+  if (!dispositionObservation?.concept) return null;
+
+  const dispositionType = dispositionObservation.concept;
+  const isAwaitingSpeciality =
+    dispositionType === concepts.AWAITING_SPECIALITY_REVIEW;
+
+  const payload: AetcMovePayload = {
+    category: isAwaitingSpeciality ? "awaiting_speciality" : "disposition",
+    from_category: "assessment",
+    disposition_type: dispositionType,
+  };
+
+  if (dispositionType === concepts.ADMISSION) {
+    const ward = getGroupMemberValue(dispositionObservation, concepts.WARD);
+    if (ward) payload.destination = ward;
+  }
+
+  if (isAwaitingSpeciality) {
+    const department = getGroupMemberValue(
+      dispositionObservation,
+      concepts.SPECIALITY_DEPARTMENT,
+    );
+
+    if (department) payload.department = department;
+  }
+
+  return payload;
+};
+
+const syncAetcVisitListDisposition = async (
+  encounter: any,
+  observations: Obs[] | Obs,
+) => {
+  const patientId = encounter?.patient;
+  if (!patientId) return;
+
+  const normalizedObservations = normalizeObservations(observations);
+  const payload = buildAetcDispositionMovePayload(
+    encounter,
+    normalizedObservations,
+  );
+
+  if (!payload) return;
+
+  await moveAetcVisitListPatient(patientId, payload);
+
+  queryClient.invalidateQueries({ queryKey: ["assessments"] });
+  queryClient.invalidateQueries({ queryKey: ["disposition"] });
+  queryClient.invalidateQueries({ queryKey: ["awaiting_speciality"] });
+  queryClient.invalidateQueries({ queryKey: ["visits"] });
+};
 
 export const addEncounter = () => {
   const queryClient = useQueryClient();
@@ -62,9 +177,16 @@ export const fetchConceptAndCreateEncounter = () => {
       obs: encounter?.obs?.filter((ob: any) => Boolean(ob.value)),
     };
 
+    const submittedObservations = filteredEncounter.obs;
     filteredEncounter.obs = await getConceptIds(filteredEncounter.obs);
-    
-    return createEncounter(filteredEncounter).then((response) => response.data);
+
+    const createdEncounter = await createEncounter(filteredEncounter).then(
+      (response) => response.data,
+    );
+
+    await syncAetcVisitListDisposition(encounter, submittedObservations);
+
+    return createdEncounter;
   };
 
   return useMutation({
@@ -95,7 +217,7 @@ const getConceptIds: any = async (obs: Obs[]) => {
 
       if (observation.coded || concept?.data[0]?.datatype == "Coded") {
         const valueConcept = await getConceptFromCacheOrFetch(
-          observation.value
+          observation.value,
         );
 
         if (valueConcept?.data.length == 0) {
@@ -144,7 +266,7 @@ export const getConceptFromCacheOrFetch = async (conceptName: string) => {
 export const getConcept: any = async (conceptName: string) => {
   if (!conceptName) return null;
   return await getAll<Concept[]>(
-    `/concepts?name=${encodeURI(conceptName)}&paginate=false&exact_match=true`
+    `/concepts?name=${encodeURI(conceptName)}&paginate=false&exact_match=true`,
   );
 };
 
@@ -153,7 +275,7 @@ type RadioOption = { value: any; label: string };
 
 const fetchConcepts = async (
   options: Array<{ key: string; label: string }>,
-  useValueKey: boolean
+  useValueKey: boolean,
 ) => {
   const mappedOptions = [];
 
@@ -183,11 +305,11 @@ const fetchConcepts = async (
 export const fetchConceptsSelectOptions = (options: ConceptOption[]) =>
   fetchConcepts(
     options.map(({ id, label }) => ({ key: id, label })),
-    false
+    false,
   );
 
 export const fetchConceptsRadioOptions = (options: RadioOption[]) =>
   fetchConcepts(
     options.map(({ value, label }) => ({ key: value, label })),
-    true
+    true,
   );

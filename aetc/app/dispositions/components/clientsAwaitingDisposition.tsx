@@ -110,11 +110,20 @@ export const ClientsAwaitingDisposition = () => {
     }
   }, [data]);
 
-  // Filter the data based on active filters
-  const filteredData = React.useMemo(() => {
+  const normalizedData = React.useMemo(() => {
     if (!data) return [];
 
-    return data.filter((item: any) => {
+    return data.map((item: any) => ({
+      ...item,
+      id: item?.patient_uuid || item?.id || item?.uuid,
+    }));
+  }, [data]);
+
+  // Filter the data based on active filters
+  const filteredData = React.useMemo(() => {
+    if (!normalizedData) return [];
+
+    return normalizedData.filter((item: any) => {
       const matchesDisposedBy =
         filters.disposedBy.length === 0 ||
         filters.disposedBy.includes(item.last_encounter_creator);
@@ -129,7 +138,7 @@ export const ClientsAwaitingDisposition = () => {
 
       return matchesDisposedBy && matchesPatientCareArea && matchesDispositionType;
     });
-  }, [data, filters]);
+  }, [normalizedData, filters]);
 
   const handleFilterChange =
     (filterType: keyof FilterState) => (event: SelectChangeEvent<string[]>) => {
@@ -243,7 +252,7 @@ export const ClientsAwaitingDisposition = () => {
           setDeleted={(id: any) => setDeleted(id)}
           triage={row.triage_result}
           visitId={row.visit_uuid}
-          id={row.uuid}
+          id={row.id}
           onVisitClosed={refetch}
         />
       ),
@@ -446,7 +455,7 @@ export const ClientsAwaitingDisposition = () => {
         data={
           filteredData?.length
             ? {
-              data: filteredData.map((row: any) => ({ id: row.uuid, ...row })),
+              data: filteredData.map((row: any) => ({ id: row.id, ...row })),
               page: paginationModel.page,
               per_page: paginationModel.pageSize,
               total_pages: totalPages,
