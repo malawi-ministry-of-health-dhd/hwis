@@ -29,10 +29,13 @@ import {
 
 import { PatientBarcodePrinter } from "@/components/barcodePrinterDialogs";
 import { useServerTime } from "@/contexts/serverTimeContext";
+import { moveAetcVisitListPatient } from "@/services/aetcVisitList";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const NewRegistrationFlow = () => {
   const [active, setActive] = useState(1);
   const { navigateTo } = useNavigation();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [completed, setCompleted] = useState(0);
@@ -141,6 +144,24 @@ export const NewRegistrationFlow = () => {
     data: guardianRelationship,
     isError: guardianRelationshipError,
   } = addRelationship();
+  const {
+    mutate: movePatientToTriage,
+    isSuccess: movedPatientToTriage,
+    isError: moveToTriageError,
+  } = useMutation({
+    mutationFn: (payload: any) => {
+      const { patient_id: patientId, ...attributes } = payload;
+
+      return moveAetcVisitListPatient(patientId, attributes).then(
+        (response) => response.data,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["registration"] });
+      queryClient.invalidateQueries({ queryKey: ["triage"] });
+      queryClient.invalidateQueries({ queryKey: ["visits"] });
+    },
+  });
 
   useEffect(() => {
     if (!Boolean(patientValues.firstName)) return;
@@ -276,10 +297,40 @@ export const NewRegistrationFlow = () => {
 
   useEffect(() => {
     if (guardianRelationshipCreated) {
+      const patientUuid = params.id as string;
+      const updatedDemographics = formData?.demographics || {};
+
+      if (!patientUuid) {
+        setMessage("failed to move patient to triage list");
+        setError(true);
+        setLoading(false);
+        return;
+      }
+
+      setMessage("moving patient to triage list...");
+      movePatientToTriage({
+        patient_id: patientUuid,
+        category: "triage",
+        from_category: "registration",
+        given_name: updatedDemographics.firstName,
+        family_name: updatedDemographics.lastName,
+        gender: updatedDemographics.gender,
+      });
+    }
+  }, [guardianRelationshipCreated]);
+
+  useEffect(() => {
+    if (movedPatientToTriage) {
       setLoading(false);
       setCompleted(8);
     }
-  }, [guardianRelationshipCreated]);
+  }, [movedPatientToTriage]);
+
+  useEffect(() => {
+    if (moveToTriageError) {
+      setMessage("failed to move patient to triage list");
+    }
+  }, [moveToTriageError]);
 
   const formatErrorsToList = (errors: any) => {
     const errorKeys = Object.keys(errors);
@@ -374,6 +425,8 @@ export const NewRegistrationFlow = () => {
       relationshipError ||
       financingError ||
       nextOfKinError ||
+      guardianError ||
+      moveToTriageError ||
       guardianRelationshipError;
 
     setError(error);
@@ -384,6 +437,8 @@ export const NewRegistrationFlow = () => {
     relationshipError,
     financingError,
     nextOfKinError,
+    guardianError,
+    moveToTriageError,
     guardianRelationshipError,
   ]);
 

@@ -53,7 +53,7 @@ export const ClientWaitingForTriage = () => {
 
   const rows = patients
     ?.map((p) => ({
-      id: p?.uuid,
+      id: p?.patient_uuid || p?.uuid,
       ...p,
       patient_arrival_time: getTime(p.arrival_time),
     }))

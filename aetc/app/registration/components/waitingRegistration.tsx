@@ -59,7 +59,7 @@ export const WaitingRegistrationList = () => {
       return new Date(p1.arrival_time) - new Date(p2.arrival_time);
     })
     .map((p) => ({
-      id: p?.uuid,
+      id: p?.patient_uuid || p?.uuid,
       ...p,
       patient_arrival_time: getTime(p.arrival_time),
     }))
