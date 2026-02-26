@@ -56,9 +56,7 @@ export function NavigationBar({
   const searchOpen = Boolean(searchAnchorEl) && searchText.trim() !== "";
   const searchPopoverId = searchOpen ? "search-popover" : undefined;
   const isSearchAuthorized = isAuthorizedForRoles([
-    roles.ADMIN,
-    roles.REGISTRATION_CLERK,
-  ]);
+    roles.ADMIN]);
 
   const [search, setSearch] = useState({
     firstName: "",
@@ -293,7 +291,7 @@ export function NavigationBar({
                 anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
               >
                 <Typography sx={{ p: 1, fontSize: "0.85rem" }}>
-                  Search available to Admin and Registration Clerk only
+                  Search available to Admin only
                 </Typography>
               </Popover>
 
@@ -321,7 +319,7 @@ export function NavigationBar({
                   placeholder={
                     isSearchAuthorized
                       ? "Add or search for a client by MRN, name, or by scanning a barcode/QR code."
-                      : "Search available to Admin and Registration Clerk only"
+                      : "Search available to Admin only"
                   }
                   disabled={!isSearchAuthorized}
                 />
