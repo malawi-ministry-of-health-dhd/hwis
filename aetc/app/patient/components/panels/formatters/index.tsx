@@ -290,80 +290,383 @@ const normalizeObsValue = (value: unknown) =>
 const isPatientContextValue = (value: string) =>
   value.toLowerCase().startsWith("patient context(hidden):");
 
+const RADIOLOGY_REQUEST_ID_PREFIX = "radiology request id:";
+const RADIOLOGY_IMAGING_TYPE_PREFIX = "imaging type:";
+const RADIOLOGY_CLINICAL_FINDINGS_PREFIX = "clinical findings:";
+const RADIOLOGY_REQUESTED_BY_PREFIX = "requested by:";
+const RADIOLOGY_REPORTED_BY_PREFIX = "reported by:";
+const RADIOLOGY_ABSCONDED_PREFIX = "patient absconded the ";
+
+const getObsName = (obs: Obs | any) => normalizeObsValue(obs?.names?.[0]?.name);
+const getObsNameLower = (obs: Obs | any) => getObsName(obs).toLowerCase();
+const getObsValue = (obs: Obs | any) =>
+  normalizeObsValue(obs?.value_text) || normalizeObsValue(obs?.value);
+
+const getObsChildren = (obs: Obs | any): Obs[] => {
+  if (Array.isArray(obs?.children) && obs.children.length > 0) return obs.children;
+  if (Array.isArray(obs?.groupMembers) && obs.groupMembers.length > 0) {
+    return obs.groupMembers;
+  }
+  return [];
+};
+
+const getDescriptionValueByPrefix = (
+  observations: Obs[],
+  prefixes: string[]
+) => {
+  const normalizedPrefixes = prefixes.map((prefix) => prefix.toLowerCase());
+
+  for (const obs of observations) {
+    if (getObsNameLower(obs) !== concepts.DESCRIPTION.toLowerCase()) continue;
+
+    const value = getObsValue(obs);
+    const matchedPrefix = normalizedPrefixes.find((prefix) =>
+      value.toLowerCase().startsWith(prefix)
+    );
+
+    if (matchedPrefix) {
+      return value.slice(matchedPrefix.length).trim();
+    }
+  }
+
+  return "";
+};
+
+const getValueByConceptName = (observations: Obs[], conceptName: string) => {
+  const target = conceptName.toLowerCase();
+  const obs = observations.find((item) => getObsNameLower(item) === target);
+  return obs ? getObsValue(obs) : "";
+};
+
+const toTimestamp = (value: string) => {
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const formatMaybeDateTime = (value: string) => {
+  if (!value) return "Unknown time";
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : getHumanReadableDateTime(parsed);
+};
+
+type RadiologyEncounterSummary = {
+  imagingType: string;
+  requestId: string;
+  requestedBy: string;
+  reasonForRequest: string;
+  differentialDiagnosis: string;
+  clinicalFindings: string;
+  selectedAreas: string;
+  findings: string;
+  reportedBy: string;
+  abscondReason: string;
+  recordedAt: string;
+  user: string;
+  isRequest: boolean;
+  isResult: boolean;
+  isAbscond: boolean;
+};
+
+const parseRadiologySummary = (encounterObs: Obs[]): RadiologyEncounterSummary | null => {
+  if (!Array.isArray(encounterObs) || encounterObs.length === 0) return null;
+
+  const imagingType =
+    getDescriptionValueByPrefix(encounterObs, [RADIOLOGY_IMAGING_TYPE_PREFIX]) ||
+    getValueByConceptName(encounterObs, concepts.IMAGING_TESTS) ||
+    "Unspecified imaging";
+
+  const requestId = getDescriptionValueByPrefix(encounterObs, [
+    RADIOLOGY_REQUEST_ID_PREFIX,
+  ]);
+  const requestedBy = getDescriptionValueByPrefix(encounterObs, [
+    RADIOLOGY_REQUESTED_BY_PREFIX,
+  ]);
+  const reasonForRequest = getValueByConceptName(
+    encounterObs,
+    concepts.REASON_FOR_REQUEST
+  );
+  const differentialDiagnosis = getValueByConceptName(
+    encounterObs,
+    concepts.DIFFERENTIAL_DIAGNOSIS
+  );
+  const clinicalFindings = getDescriptionValueByPrefix(encounterObs, [
+    RADIOLOGY_CLINICAL_FINDINGS_PREFIX,
+  ]);
+  const findings =
+    getDescriptionValueByPrefix(encounterObs, ["radiology findings:"]) ||
+    getDescriptionValueByPrefix(encounterObs, ["radiology result:"]);
+  const reportedBy = getDescriptionValueByPrefix(encounterObs, [
+    RADIOLOGY_REPORTED_BY_PREFIX,
+  ]);
+  const abscondReason = getDescriptionValueByPrefix(encounterObs, [
+    RADIOLOGY_ABSCONDED_PREFIX,
+  ]);
+
+  const excludedNames = new Set([
+    concepts.IMAGING_TESTS.toLowerCase(),
+    concepts.REASON_FOR_REQUEST.toLowerCase(),
+    concepts.DIFFERENTIAL_DIAGNOSIS.toLowerCase(),
+    concepts.SPECIALITY_DEPARTMENT.toLowerCase(),
+    concepts.DATE_OF_LAST_MENSTRUAL.toLowerCase(),
+    concepts.DESCRIPTION.toLowerCase(),
+  ]);
+
+  const selectedAreas = encounterObs
+    .filter((obs) => {
+      const name = getObsNameLower(obs);
+      const value = getObsValue(obs).toLowerCase();
+      return !excludedNames.has(name) && value === "yes";
+    })
+    .map((obs) => {
+      const parent = getObsName(obs);
+      const children = getObsChildren(obs)
+        .filter((child) => getObsValue(child).toLowerCase() === "yes")
+        .map((child) => getObsName(child))
+        .filter(Boolean);
+      if (children.length === 0) return parent;
+      return `${parent}: ${children.join(", ")}`;
+    })
+    .filter(Boolean)
+    .join("; ");
+
+  const recordedAt =
+    encounterObs
+      .map((obs) => normalizeObsValue(obs?.obs_datetime))
+      .filter(Boolean)
+      .sort((a, b) => toTimestamp(a) - toTimestamp(b))
+      .pop() || "";
+
+  const hasRequestDetails = Boolean(
+    requestedBy ||
+      reasonForRequest ||
+      differentialDiagnosis ||
+      clinicalFindings ||
+      selectedAreas ||
+      requestId
+  );
+  const isResult = Boolean(findings);
+  const isAbscond = Boolean(abscondReason);
+  const isRequest = hasRequestDetails && !isResult && !isAbscond;
+
+  if (!isRequest && !isResult && !isAbscond) {
+    return null;
+  }
+
+  const firstWithUser = encounterObs.find((obs) => Boolean(obs?.created_by));
+  const user = firstWithUser?.created_by
+    ? `${firstWithUser.created_by} ${getHumanReadableDateTime(firstWithUser?.obs_datetime)}`
+    : "";
+
+  return {
+    imagingType,
+    requestId,
+    requestedBy,
+    reasonForRequest,
+    differentialDiagnosis,
+    clinicalFindings,
+    selectedAreas,
+    findings,
+    reportedBy,
+    abscondReason,
+    recordedAt,
+    user,
+    isRequest,
+    isResult,
+    isAbscond,
+  };
+};
+
+const groupObservationsByEncounter = (data: Obs[]) => {
+  const grouped = new Map<string, Obs[]>();
+
+  data.forEach((obs) => {
+    const encounterId = normalizeObsValue((obs as any)?.encounter_id);
+    const dateTime = normalizeObsValue(obs?.obs_datetime);
+    const key = encounterId || `${dateTime}|${normalizeObsValue(obs?.created_by)}`;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(obs);
+  });
+
+  return Array.from(grouped.values());
+};
+
 export const formatRadiologyInvestigationPlans = (data: Obs[]) =>
-  data
-    .filter((ob) => ob && (ob.value || (Array.isArray(ob.children) && ob.children.length > 0)))
-    .flatMap((ob) => {
-      const name = ob?.names?.[0]?.name || "Result";
-      const value = normalizeObsValue(ob?.value);
-      const children = Array.isArray(ob?.children) ? ob.children : [];
+  (() => {
+    if (!Array.isArray(data) || data.length === 0) return [];
 
-      if (isPatientContextValue(value)) {
-        return [];
-      }
+    const sanitized = data.filter(
+      (ob) => ob && !isPatientContextValue(getObsValue(ob))
+    );
 
-      const selectedChildren = children
-        .filter((child: Obs) => {
-          const childValue = normalizeObsValue(child?.value).toLowerCase();
-          return childValue.length > 0;
-        })
-        .map((child: Obs) => ({
-          test: child?.names?.[0]?.name || "Result",
-          result: normalizeObsValue(child?.value) || "—",
-        }));
+    const encounterGroups = groupObservationsByEncounter(sanitized);
+    const summaries = encounterGroups
+      .map((group) => parseRadiologySummary(group))
+      .filter(Boolean) as RadiologyEncounterSummary[];
 
-      if (selectedChildren.length > 0) {
-        return [
-          {
-            plan: name,
-            result: selectedChildren,
-            user: ob?.created_by
-              ? `${ob.created_by} ${getHumanReadableDateTime(ob?.obs_datetime)}`
-              : undefined,
-          },
-        ];
-      }
+    if (summaries.length === 0) return [];
 
-      if (name === concepts.DESCRIPTION) {
-        const [prefix, ...rest] = value.split(":");
-        const label = normalizeObsValue(prefix) || "Description";
-        const descriptionValue = normalizeObsValue(rest.join(":"));
+    const groupedByType = summaries.reduce((acc, summary) => {
+      const key = summary.imagingType || "Unspecified imaging";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(summary);
+      return acc;
+    }, {} as Record<string, RadiologyEncounterSummary[]>);
 
-        return [
-          {
-            plan: "Description",
-            result: [
-              {
-                test: label,
-                result: descriptionValue || "—",
-              },
-            ],
-            user: ob?.created_by
-              ? `${ob.created_by} ${getHumanReadableDateTime(ob?.obs_datetime)}`
-              : undefined,
-          },
-        ];
-      }
+    const rows: Array<{
+      plan: string;
+      result: Array<{ test: string; result: string }>;
+      user?: string;
+    }> = [];
 
-      if (!value) {
-        return [];
-      }
+    Object.keys(groupedByType)
+      .sort((a, b) => a.localeCompare(b))
+      .forEach((imagingType) => {
+        const entries = [...groupedByType[imagingType]].sort(
+          (a, b) => toTimestamp(a.recordedAt) - toTimestamp(b.recordedAt)
+        );
 
-      return [
-        {
-          plan: name,
-          result: [
-            {
-              test: name,
-              result: value,
-            },
-          ],
-          user: ob?.created_by
-            ? `${ob.created_by} ${getHumanReadableDateTime(ob?.obs_datetime)}`
-            : undefined,
-        },
-      ];
-    });
+        const requests = entries.filter((entry) => entry.isRequest);
+        const terminals = entries.filter((entry) => entry.isResult || entry.isAbscond);
+
+        type ScanRecord = {
+          request?: RadiologyEncounterSummary;
+          result?: RadiologyEncounterSummary;
+          abscond?: RadiologyEncounterSummary;
+        };
+
+        const scans: ScanRecord[] = requests.map((request) => ({ request }));
+
+        const requestIdToIndices = new Map<string, number[]>();
+        scans.forEach((scan, index) => {
+          const id = normalizeObsValue(scan.request?.requestId).toLowerCase();
+          if (!id) return;
+          if (!requestIdToIndices.has(id)) requestIdToIndices.set(id, []);
+          requestIdToIndices.get(id)!.push(index);
+        });
+
+        const unmatchedTerminals: RadiologyEncounterSummary[] = [];
+
+        terminals.forEach((terminal) => {
+          const id = normalizeObsValue(terminal.requestId).toLowerCase();
+          if (!id || !requestIdToIndices.has(id)) {
+            unmatchedTerminals.push(terminal);
+            return;
+          }
+
+          const indices = requestIdToIndices.get(id) || [];
+          const targetIndex =
+            indices.find((index) => !scans[index].result && !scans[index].abscond) ??
+            indices[0];
+
+          if (targetIndex == null) {
+            unmatchedTerminals.push(terminal);
+            return;
+          }
+
+          if (terminal.isResult) scans[targetIndex].result = terminal;
+          if (terminal.isAbscond) scans[targetIndex].abscond = terminal;
+        });
+
+        unmatchedTerminals.forEach((terminal) => {
+          const pendingIndex = scans.findIndex(
+            (scan) => !scan.result && !scan.abscond
+          );
+          if (pendingIndex >= 0) {
+            if (terminal.isResult) scans[pendingIndex].result = terminal;
+            if (terminal.isAbscond) scans[pendingIndex].abscond = terminal;
+            return;
+          }
+          scans.push(terminal.isResult ? { result: terminal } : { abscond: terminal });
+        });
+
+        scans
+          .sort((a, b) => {
+            const aTime =
+              a.request?.recordedAt || a.result?.recordedAt || a.abscond?.recordedAt || "";
+            const bTime =
+              b.request?.recordedAt || b.result?.recordedAt || b.abscond?.recordedAt || "";
+            return toTimestamp(aTime) - toTimestamp(bTime);
+          })
+          .forEach((scan, index) => {
+            const details: Array<{ test: string; result: string }> = [];
+            const request = scan.request;
+            const result = scan.result;
+            const abscond = scan.abscond;
+
+            const requestTime =
+              request?.recordedAt || result?.recordedAt || abscond?.recordedAt || "";
+            details.push({
+              test: "Requested On",
+              result: formatMaybeDateTime(requestTime),
+            });
+
+            if (request?.requestedBy) {
+              details.push({ test: "Requesting Dr", result: request.requestedBy });
+            }
+            if (request?.reasonForRequest) {
+              details.push({
+                test: "Examination request for",
+                result: request.reasonForRequest,
+              });
+            }
+            if (request?.differentialDiagnosis) {
+              details.push({
+                test: "Differential diagnosis",
+                result: request.differentialDiagnosis,
+              });
+            }
+            if (request?.clinicalFindings) {
+              details.push({
+                test: "Clinical findings",
+                result: request.clinicalFindings,
+              });
+            }
+            if (request?.selectedAreas) {
+              details.push({
+                test: "Requested scan areas",
+                result: request.selectedAreas,
+              });
+            }
+
+            if (result) {
+              details.push({
+                test: "Status",
+                result: `Report submitted (${formatMaybeDateTime(result.recordedAt)})`,
+              });
+              if (result.findings) {
+                details.push({
+                  test: "Radiologist findings",
+                  result: result.findings,
+                });
+              }
+              if (result.reportedBy) {
+                details.push({ test: "Reported by", result: result.reportedBy });
+              }
+            } else if (abscond) {
+              details.push({
+                test: "Status",
+                result: `Patient absconded (${formatMaybeDateTime(abscond.recordedAt)})`,
+              });
+              if (abscond.abscondReason) {
+                details.push({ test: "Abscond note", result: abscond.abscondReason });
+              }
+            } else {
+              details.push({
+                test: "Status",
+                result: "Pending radiologist report",
+              });
+            }
+
+            rows.push({
+              plan: `${imagingType} Scan ${index + 1}`,
+              result: details,
+              user: request?.user || result?.user || abscond?.user || undefined,
+            });
+          });
+      });
+
+    return rows;
+  })();
 
 export const formatManagementPlan = (data: Obs[]): ClinicalNotesDataType => {
   const items = data?.map((item) => ({ item: item?.value }));

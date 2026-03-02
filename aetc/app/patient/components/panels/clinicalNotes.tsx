@@ -327,7 +327,7 @@ export const ClinicalNotes = () => {
     filterMedicalInpatientState,
   ]); // Added filterSurgicalState to dependencies
 
-  const getEncountersByType = (encounterTypeUuid: any) => {
+  const getEncounterRecordsByType = (encounterTypeUuid: any) => {
     const {
       data: patientHistory,
       isLoading: historyLoading,
@@ -335,8 +335,20 @@ export const ClinicalNotes = () => {
       patientId,
       `encounter_type=${encounterTypeUuid}&visit=${selectedVisit?.uuid}`
     );
-    if (!patientHistory) return [];
-    return patientHistory[0]?.obs || [];
+    if (!Array.isArray(patientHistory)) return [];
+    return patientHistory;
+  };
+
+  const getEncountersByType = (encounterTypeUuid: any) => {
+    const records = getEncounterRecordsByType(encounterTypeUuid);
+    return records[0]?.obs || [];
+  };
+
+  const getAllObservationsByType = (encounterTypeUuid: any) => {
+    const records = getEncounterRecordsByType(encounterTypeUuid);
+    return records.flatMap((record: any) =>
+      Array.isArray(record?.obs) ? record.obs : []
+    );
   };
 
   const getLatestValue = (obsData: any) => {
@@ -470,7 +482,7 @@ export const ClinicalNotes = () => {
         <ResultsTable
           title="Beside Tests"
           data={formatInvestigationPlans(
-            getEncountersByType(encounters.BED_SIDE_TEST)
+            getAllObservationsByType(encounters.BED_SIDE_TEST)
           )}
         />
       ),
@@ -542,10 +554,35 @@ export const ClinicalNotes = () => {
     },
     panel11: {
       title: "Laboratory or Radiology finding",
-      data: [
-        ...getEncountersByType(encounters.BED_SIDE_TEST),
-        ...getEncountersByType(encounters.LAB),
-      ],
+      data: (
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {(() => {
+            const bedSideFindings = formatInvestigationPlans(
+              getAllObservationsByType(encounters.BED_SIDE_TEST)
+            );
+            const radiologyFindings = formatRadiologyInvestigationPlans(
+              getAllObservationsByType(encounters.RADIOLOGY_EXAMINATON)
+            );
+
+            return (
+              <>
+                {bedSideFindings.length > 0 && (
+                  <ResultsTable title="Beside Tests" data={bedSideFindings} />
+                )}
+                {radiologyFindings.length > 0 && (
+                  <ResultsTable
+                    title="Radiology Examinations"
+                    data={radiologyFindings}
+                  />
+                )}
+                {bedSideFindings.length === 0 && radiologyFindings.length === 0 && (
+                  <Typography variant="body2">No findings recorded.</Typography>
+                )}
+              </>
+            );
+          })()}
+        </Box>
+      ),
       removeObs: [], // No specific headings to remove
     },
     panel12: {
@@ -1156,10 +1193,10 @@ export const ClinicalNotes = () => {
       title: " Laboratory or Radiology Findings",
       content: (() => {
         const bedSideFindings = formatInvestigationPlans(
-          getEncountersByType(encounters.BED_SIDE_TEST)
+          getAllObservationsByType(encounters.BED_SIDE_TEST)
         );
         const radiologyFindings = formatRadiologyInvestigationPlans(
-          getEncountersByType(encounters.RADIOLOGY_EXAMINATON)
+          getAllObservationsByType(encounters.RADIOLOGY_EXAMINATON)
         );
 
         return (

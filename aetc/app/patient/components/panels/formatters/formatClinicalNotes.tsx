@@ -89,8 +89,14 @@ const hasValueMatch = (obs: any[], needle: string): boolean => {
 };
 
 export const formatClinicalNotesData = (
-  getEncountersByType: (type: string) => any[]
+  getEncountersByType: (type: string) => any[],
+  getAllObservationsByType?: (type: string) => any[]
 ) => {
+  const getInvestigationObservationsByType = (type: string) =>
+    typeof getAllObservationsByType === "function"
+      ? getAllObservationsByType(type)
+      : getEncountersByType(type);
+
   const primarySurveyData = formatPrimarySurvey({
     airwayObs: getEncountersByType(encounters.AIRWAY_ASSESSMENT),
     breathingObs: getEncountersByType(encounters.BREATHING_ASSESSMENT),
@@ -577,10 +583,10 @@ export const formatClinicalNotesData = (
       title: "Laboratory or Radiology Findings",
       content: (() => {
         const bedSideFindings = formatInvestigationPlans(
-          getEncountersByType(encounters.BED_SIDE_TEST)
+          getInvestigationObservationsByType(encounters.BED_SIDE_TEST)
         );
         const radiologyFindings = formatRadiologyInvestigationPlans(
-          getEncountersByType(encounters.RADIOLOGY_EXAMINATON)
+          getInvestigationObservationsByType(encounters.RADIOLOGY_EXAMINATON)
         );
 
         return (
