@@ -22,7 +22,7 @@ import {
 import { concepts, encounters } from "@/constants";
 import { Visit } from "@/interfaces";
 import { useServerTime } from "@/contexts/serverTimeContext";
-
+import { getConceptSet } from "@/hooks/getConceptSet";
 
 type Prop = {
   onSubmit: (values: any) => void;
@@ -53,7 +53,6 @@ const careAreaFormConfig: Record<
 };
 export const careAreaConfig = careAreaFormConfig;
 
-
 const radioOptions = [
   { value: concepts.GYNAE_BENCH, label: concepts.GYNAE_BENCH },
   { value: concepts.SURGICAL_BENCH, label: concepts.SURGICAL_BENCH },
@@ -63,11 +62,7 @@ const radioOptions = [
   { value: concepts.TRAUMA, label: concepts.TRAUMA },
   { value: concepts.RESUSCITATION, label: concepts.RESUSCITATION },
   { value: concepts.PRIORITY, label: concepts.PRIORITY },
-]
-
-
-
-
+];
 
 const schema = Yup.object().shape({
   careArea: Yup.string().required("Please select a patient care area."),
@@ -86,6 +81,8 @@ export const PatientCareAreaForm = ({ onSubmit, onSkip }: Prop) => {
   const { data: patientVisits } = getPatientVisitTypes(params.id as string);
   const [activeVisit, setActiveVisit] = useState<Visit | undefined>(undefined);
   const { init, ServerTime } = useServerTime();
+  const { data: aetcServiceAreas, isLoading: aetcServiceAreaLoading } =
+    getConceptSet(concepts.AETC_SERVICE_AREAS);
 
   useEffect(() => {
     if (patientVisits) {
@@ -148,7 +145,12 @@ export const PatientCareAreaForm = ({ onSubmit, onSkip }: Prop) => {
         >
           <RadioGroupInput
             row
-            options={radioOptions}
+            options={aetcServiceAreas
+              ?.map((area: any) => ({
+                value: area?.name,
+                label: area?.name,
+              }))
+              .filter((area: any) => area.label !== "Other")}
             name="careArea"
             label="Select Patient Care Area"
           />

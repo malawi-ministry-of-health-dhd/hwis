@@ -15,6 +15,7 @@ export const encounters = {
   SCREENING_ENCOUNTER: "6878ece0-a61b-4e49-83b9-0468dd9eacfc",
   FINANCING: "ceec1aca-1bbb-427a-bc6d-ef8ae11f31b2",
   PRESENTING_COMPLAINTS: "ba069102-8d80-11d8-abbb-0024217bb78e",
+  SAMPLE_HISTORY_PRESENTING_COMPLAINTS: "507e775e-1905-4e9a-bba9-dddbe1946db6",
   // TRIAGE_RESULT: "723ea21f-408e-4da5-a91f-56b0a8d0ce73",
   DISPOSITION: "ef689dc1-364f-4e18-b44f-36c5938c78da",
   TRIAGE_RESULT: "27e4890f-1677-4098-aa85-c65cfe32359c",
@@ -186,6 +187,7 @@ export const encounters = {
   // GYNEACOLOGY_WARD: "59514a38-a019-4833-b180-480d1bbf2dfe",
   GYNEACOLOGY_WARD: "7819932d-eea1-43d2-a543-35cb93f2da49",
   AWAITING_SPECIALTY: "4a10d674-9072-4385-b2e9-583d0524abe1",
+  SAMPLE_HISTORY_MEDICATION: "d4a76565-efac-46b3-9ac9-db6e1c76aec6",
 };
 
 export const AETC_VISIT_TYPE = "9f825d6a-50e6-44e1-a1a4-5cd343963ecc";
@@ -276,6 +278,8 @@ export const concepts = {
   SIX_A_ORTHOPAEDIC_MALE: "6A Orthopaedic male",
   THREE_B_HDU: "3B High Dependency Unit",
   MSF_WARD_GYNAECOLOGY: "MSF ward - Gynaecology",
+  FOUR_A_FEMALE_WARD: "4A Female ward",
+  FOUR_A_HDU: "4A HDU",
 
   INTENSIVE_CARE_UNIT_ICU: "Intensive Care Unit Icu",
   ENT: "Ent",

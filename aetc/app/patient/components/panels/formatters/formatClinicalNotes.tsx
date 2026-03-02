@@ -21,9 +21,100 @@ import ResultsTable from "../tabularDisplayInformation";
 import { ContinuationNotes } from "../continuationNotes";
 import { MonitoringCharts } from "@/app/patient/components/clinicalNotes/monitoringCharts";
 
+type NotesChild = {
+  item: string | { [key: string]: string } | null | undefined;
+  bold?: boolean;
+  children?: NotesChild | NotesChild[] | null | undefined;
+};
+
+const RenderNotesChildren: React.FC<{
+  children?: NotesChild | NotesChild[] | null | undefined;
+  level?: number;
+}> = ({ children, level = 1 }) => {
+  const normalizedChildren: NotesChild[] = Array.isArray(children)
+    ? children
+    : children
+      ? [children]
+      : [];
+
+  if (!normalizedChildren.length) return null;
+
+  return (
+    <div style={{ paddingLeft: `${level * 12}px` }}>
+      {normalizedChildren.map((child, index) => {
+        let itemText: React.ReactNode = null;
+
+        if (typeof child?.item === "string") {
+          itemText = child.bold ? <strong>{child.item}</strong> : child.item;
+        } else if (child?.item && typeof child.item === "object") {
+          itemText = (
+            <>
+              {Object.entries(child.item).map(([key, value], i, arr) => (
+                <span key={i}>
+                  {child.bold ? <strong>{key}</strong> : key}: {value}
+                  {i < arr.length - 1 && ", "}
+                </span>
+              ))}
+            </>
+          );
+        }
+
+        return (
+          <div key={index} style={{ marginBottom: "4px" }}>
+            {itemText && <div>- {itemText}</div>}
+            {child?.children && (
+              <RenderNotesChildren children={child.children} level={level + 1} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const hasValueMatch = (obs: any[], needle: string): boolean => {
+  if (!Array.isArray(obs) || !needle) return false;
+  const target = needle.toLowerCase();
+  const stack = [...obs];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current) continue;
+    const value = String(current.value ?? "").toLowerCase();
+    if (value.includes(target)) return true;
+    if (Array.isArray(current.children)) {
+      stack.push(...current.children);
+    }
+  }
+  return false;
+};
+
 export const formatClinicalNotesData = (
   getEncountersByType: (type: string) => any[]
 ) => {
+  const primarySurveyData = formatPrimarySurvey({
+    airwayObs: getEncountersByType(encounters.AIRWAY_ASSESSMENT),
+    breathingObs: getEncountersByType(encounters.BREATHING_ASSESSMENT),
+    circulationObs: getEncountersByType(encounters.CIRCULATION_ASSESSMENT),
+    disabilityObs: getEncountersByType(encounters.PRIMARY_DISABILITY_ASSESSMENT),
+    exposureObs: getEncountersByType(encounters.EXPOSURE_ASSESSMENT),
+  });
+  const secondarySurveyData = formatSecondarySurvey({
+    generalInformationObs: getEncountersByType(
+      encounters.GENERAL_INFORMATION_ASSESSMENT
+    ),
+    headAndNeckObs: getEncountersByType(
+      encounters.HEAD_AND_NECK_ASSESSMENT
+    ),
+    chestObs: getEncountersByType(encounters.CHEST_ASSESSMENT),
+    abdomenAndPelvisObs: getEncountersByType(
+      encounters.ABDOMEN_AND_PELVIS_ASSESSMENT
+    ),
+    extremitiesObs: getEncountersByType(encounters.EXTREMITIES_ASSESSMENT),
+    neurologicalObs: getEncountersByType(
+      encounters.NEUROLOGICAL_EXAMINATION_ASSESSMENT
+    ),
+  });
+
   return [
 
     {
@@ -39,15 +130,98 @@ export const formatClinicalNotesData = (
 
     {
       title: "Primary Survey",
-      content: formatPrimarySurvey({
-        airwayObs: getEncountersByType(encounters.AIRWAY_ASSESSMENT),
-        breathingObs: getEncountersByType(encounters.BREATHING_ASSESSMENT),
-        circulationObs: getEncountersByType(encounters.CIRCULATION_ASSESSMENT),
-        disabilityObs: getEncountersByType(
-          encounters.PRIMARY_DISABILITY_ASSESSMENT
-        ),
-        exposureObs: getEncountersByType(encounters.EXPOSURE_ASSESSMENT),
-      }),
+      content: (
+        <Box>
+          <style>
+            {`
+              .primary-survey-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 12px;
+                width: 100%;
+              }
+
+              .primary-survey-item {
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 10px;
+                background-color: #fafafa;
+                min-height: 100px;
+                display: flex;
+                flex-direction: column;
+              }
+
+              .primary-survey-title {
+                font-weight: bold;
+                margin-bottom: 6px;
+                margin-top: 0;
+                font-size: 0.9rem;
+                border-bottom: 1px solid #ddd;
+                padding-bottom: 4px;
+              }
+
+              .primary-survey-content {
+                padding-left: 8px;
+                font-size: 0.85rem;
+                flex-grow: 1;
+              }
+
+              .primary-survey-empty {
+                color: #999;
+                font-style: italic;
+                font-size: 0.8rem;
+              }
+
+              @media print {
+                .primary-survey-grid {
+                  gap: 8px;
+                }
+
+                .primary-survey-item {
+                  padding: 6px;
+                  min-height: auto;
+                  page-break-inside: avoid;
+                  break-inside: avoid;
+                }
+
+                .primary-survey-title {
+                  font-size: 0.8rem;
+                  margin-bottom: 4px;
+                }
+
+                .primary-survey-content {
+                  font-size: 0.75rem;
+                  padding-left: 4px;
+                }
+              }
+            `}
+          </style>
+
+          <div className="primary-survey-grid">
+            {primarySurveyData.map((section, index) => {
+              const hasContent =
+                Array.isArray(section?.children)
+                  ? section.children.length > 0
+                  : Boolean(section?.children);
+
+              return (
+                <div key={index} className="primary-survey-item">
+                  <h4 className="primary-survey-title">
+                    {section.heading ?? "Untitled"}
+                  </h4>
+                  <div className="primary-survey-content">
+                    {hasContent ? (
+                      <RenderNotesChildren children={section.children as NotesChild[]} />
+                    ) : (
+                      <div className="primary-survey-empty">Notes not entered</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Box>
+      ),
     },
     {
       title: "Sample History",
@@ -123,7 +297,7 @@ export const formatClinicalNotesData = (
             <div className="sample-history-item">
               <div className="sample-history-content">
                 <GenericNotes
-                  data={getEncountersByType(encounters.PRESENTING_COMPLAINTS)}
+                  data={getEncountersByType(encounters.SAMPLE_HISTORY_PRESENTING_COMPLAINTS)}
                   title="Symptoms - Presenting Complaints"
                   config={NotesConfig.PRESENTING_COMPLAINTS}
                 />
@@ -169,6 +343,18 @@ export const formatClinicalNotesData = (
                 {(() => {
                   const allergiesData = getEncountersByType(encounters.ALLERGIES);
                   const hasAllergies = allergiesData && allergiesData.length > 0;
+                  const noKnownAllergies = hasValueMatch(
+                    allergiesData,
+                    "no known allergies"
+                  );
+
+                  if (noKnownAllergies) {
+                    return (
+                      <div className="sample-history-empty">
+                        Patient has no known allergies
+                      </div>
+                    );
+                  }
 
                   if (!hasAllergies) {
                     return <div className="sample-history-empty">Notes not entered</div>;
@@ -190,7 +376,7 @@ export const formatClinicalNotesData = (
               <h4 className="sample-history-title">Medications</h4>
               <div className="sample-history-content">
                 {(() => {
-                  const medicationsData = getEncountersByType(encounters.PRESCRIPTIONS);
+                  const medicationsData = getEncountersByType(encounters.SAMPLE_HISTORY_MEDICATION);
                   const hasMedications = medicationsData && medicationsData.length > 0;
 
                   if (!hasMedications) {
@@ -219,6 +405,18 @@ export const formatClinicalNotesData = (
                   const hasConditions = conditionsData && conditionsData.length > 0;
                   const hasSurgery = surgeryData && surgeryData.length > 0;
                   const hasAdmissions = admissionsData && admissionsData.length > 0;
+                  const noConditions = hasValueMatch(
+                    conditionsData,
+                    "no prior/existing conditions"
+                  );
+
+                  if (noConditions) {
+                    return (
+                      <div className="sample-history-empty">
+                        Patient has no prior/existing conditions
+                      </div>
+                    );
+                  }
 
                   if (!hasConditions && !hasSurgery && !hasAdmissions) {
                     return <div className="sample-history-empty">Notes not entered</div>;
@@ -275,22 +473,98 @@ export const formatClinicalNotesData = (
     },
     {
       title: "Secondary Survey",
-      content: formatSecondarySurvey({
-        generalInformationObs: getEncountersByType(
-          encounters.GENERAL_INFORMATION_ASSESSMENT
-        ),
-        headAndNeckObs: getEncountersByType(
-          encounters.HEAD_AND_NECK_ASSESSMENT
-        ),
-        chestObs: getEncountersByType(encounters.CHEST_ASSESSMENT),
-        abdomenAndPelvisObs: getEncountersByType(
-          encounters.ABDOMEN_AND_PELVIS_ASSESSMENT
-        ),
-        extremitiesObs: getEncountersByType(encounters.EXTREMITIES_ASSESSMENT),
-        neurologicalObs: getEncountersByType(
-          encounters.NEUROLOGICAL_EXAMINATION_ASSESSMENT
-        ),
-      }),
+      content: (
+        <Box>
+          <style>
+            {`
+              .secondary-survey-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 12px;
+                width: 100%;
+              }
+
+              .secondary-survey-item {
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                padding: 10px;
+                background-color: #fafafa;
+                min-height: 100px;
+                display: flex;
+                flex-direction: column;
+              }
+
+              .secondary-survey-title {
+                font-weight: bold;
+                margin-bottom: 6px;
+                margin-top: 0;
+                font-size: 0.9rem;
+                border-bottom: 1px solid #ddd;
+                padding-bottom: 4px;
+              }
+
+              .secondary-survey-content {
+                padding-left: 8px;
+                font-size: 0.85rem;
+                flex-grow: 1;
+              }
+
+              .secondary-survey-empty {
+                color: #999;
+                font-style: italic;
+                font-size: 0.8rem;
+              }
+
+              @media print {
+                .secondary-survey-grid {
+                  gap: 8px;
+                }
+
+                .secondary-survey-item {
+                  padding: 6px;
+                  min-height: auto;
+                  page-break-inside: avoid;
+                  break-inside: avoid;
+                }
+
+                .secondary-survey-title {
+                  font-size: 0.8rem;
+                  margin-bottom: 4px;
+                }
+
+                .secondary-survey-content {
+                  font-size: 0.75rem;
+                  padding-left: 4px;
+                }
+              }
+            `}
+          </style>
+
+          <div className="secondary-survey-grid">
+            {secondarySurveyData.map((section, index) => {
+              const hasContent =
+                Array.isArray(section?.children)
+                  ? section.children.length > 0
+                  : Boolean(section?.children);
+
+              return (
+                <div key={index} className="secondary-survey-item">
+                  <h4 className="secondary-survey-title">
+                    {section.heading ?? "Untitled"}
+                  </h4>
+                  <div className="secondary-survey-content">
+                    {hasContent ? (
+                      <RenderNotesChildren children={section.children as NotesChild[]} />
+                    ) : (
+                      <div className="secondary-survey-empty">Notes not entered</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Box>
+      ),
     },
     {
       title: "Diagnosis",
@@ -329,9 +603,120 @@ export const formatClinicalNotesData = (
     },
     {
       title: "Patient Management Plan",
-      content: formatPatientManagamentPlan({
-        nonPharmalogical: getEncountersByType(encounters.NON_PHARMACOLOGICAL),
-      }),
+      content: (() => {
+        const patientManagementData = formatPatientManagamentPlan({
+          nonPharmalogical: getEncountersByType(encounters.NON_PHARMACOLOGICAL),
+          careAreaObs: getEncountersByType(encounters.PATIENT_CARE_AREA),
+          medicationObs: getEncountersByType(encounters.PRESCRIPTIONS),
+        });
+
+        return (
+          <Box>
+            <style>
+              {`
+                .patient-management-grid {
+                  display: grid;
+                  grid-template-columns: repeat(3, 1fr);
+                  gap: 12px;
+                  width: 100%;
+                }
+
+                .patient-management-item {
+                  border: 1px solid #e0e0e0;
+                  border-radius: 6px;
+                  padding: 10px;
+                  background-color: #fafafa;
+                  min-height: 100px;
+                  display: flex;
+                  flex-direction: column;
+                }
+
+                .patient-management-title {
+                  font-weight: bold;
+                  margin-bottom: 6px;
+                  margin-top: 0;
+                  font-size: 0.9rem;
+                  border-bottom: 1px solid #ddd;
+                  padding-bottom: 4px;
+                }
+
+                .patient-management-content {
+                  padding-left: 8px;
+                  font-size: 0.85rem;
+                  flex-grow: 1;
+                }
+
+                .patient-management-empty {
+                  color: #999;
+                  font-style: italic;
+                  font-size: 0.8rem;
+                }
+
+                @media print {
+                  .patient-management-grid {
+                    gap: 8px;
+                  }
+
+                  .patient-management-item {
+                    padding: 6px;
+                    min-height: auto;
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                  }
+
+                  .patient-management-title {
+                    font-size: 0.8rem;
+                    margin-bottom: 4px;
+                  }
+
+                  .patient-management-content {
+                    font-size: 0.75rem;
+                    padding-left: 4px;
+                  }
+                }
+              `}
+            </style>
+
+            <div className="patient-management-grid">
+              {patientManagementData.map((section, index) => {
+                const hasContent =
+                  Array.isArray(section?.children)
+                    ? section.children.length > 0
+                    : Boolean(section?.children);
+
+                return (
+                  <div key={index} className="patient-management-item">
+                    <h4 className="patient-management-title">
+                      {section.heading ?? "Untitled"}
+                    </h4>
+                    <div className="patient-management-content">
+                      {hasContent ? (
+                        <RenderNotesChildren children={section.children as NotesChild[]} />
+                      ) : (
+                        <div className="patient-management-empty">Notes not entered</div>
+                      )}
+                    </div>
+                    {section.user && (
+                      <div
+                        style={{
+                          color: "#7f8c8d",
+                          fontSize: "14px",
+                          letterSpacing: "0.2px",
+                          marginTop: "8px",
+                          fontStyle: "italic",
+                          textAlign: "right",
+                        }}
+                      >
+                        {section.user}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Box>
+        );
+      })(),
     },
     {
       title: "Continuation Notes",
@@ -344,10 +729,121 @@ export const formatClinicalNotesData = (
 
     {
       title: "Disposition Notes",
-      content: formatDisposition(
-        [...getEncountersByType(encounters.DISPOSITION)
-          , ...getEncountersByType(encounters.AWAITING_SPECIALTY)]
-      ),
+      content: (() => {
+        const dispositionData = formatDisposition(
+          [
+            ...getEncountersByType(encounters.AWAITING_SPECIALTY),
+            ...getEncountersByType(encounters.DISPOSITION),
+          ]
+        );
+
+        return (
+          <Box>
+            <style>
+              {`
+                .disposition-grid {
+                  display: grid;
+                  grid-template-columns: repeat(3, 1fr);
+                  gap: 12px;
+                  width: 100%;
+                }
+
+                .disposition-item {
+                  border: 1px solid #e0e0e0;
+                  border-radius: 6px;
+                  padding: 10px;
+                  background-color: #fafafa;
+                  min-height: 100px;
+                  display: flex;
+                  flex-direction: column;
+                }
+
+                .disposition-title {
+                  font-weight: bold;
+                  margin-bottom: 6px;
+                  margin-top: 0;
+                  font-size: 0.9rem;
+                  border-bottom: 1px solid #ddd;
+                  padding-bottom: 4px;
+                }
+
+                .disposition-content {
+                  padding-left: 8px;
+                  font-size: 0.85rem;
+                  flex-grow: 1;
+                }
+
+                .disposition-empty {
+                  color: #999;
+                  font-style: italic;
+                  font-size: 0.8rem;
+                }
+
+                @media print {
+                  .disposition-grid {
+                    gap: 8px;
+                  }
+
+                  .disposition-item {
+                    padding: 6px;
+                    min-height: auto;
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                  }
+
+                  .disposition-title {
+                    font-size: 0.8rem;
+                    margin-bottom: 4px;
+                  }
+
+                  .disposition-content {
+                    font-size: 0.75rem;
+                    padding-left: 4px;
+                  }
+                }
+              `}
+            </style>
+
+            <div className="disposition-grid">
+              {dispositionData.map((section, index) => {
+                const hasContent =
+                  Array.isArray(section?.children)
+                    ? section.children.length > 0
+                    : Boolean(section?.children);
+
+                return (
+                  <div key={index} className="disposition-item">
+                    <h4 className="disposition-title">
+                      {section.heading ?? "Untitled"}
+                    </h4>
+                    <div className="disposition-content">
+                      {hasContent ? (
+                        <RenderNotesChildren children={section.children as NotesChild[]} />
+                      ) : (
+                        <div className="disposition-empty">Notes not entered</div>
+                      )}
+                    </div>
+                    {section.user && (
+                      <div
+                        style={{
+                          color: "#7f8c8d",
+                          fontSize: "14px",
+                          letterSpacing: "0.2px",
+                          marginTop: "8px",
+                          fontStyle: "italic",
+                          textAlign: "right",
+                        }}
+                      >
+                        {section.user}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </Box>
+        );
+      })(),
     },
   ];
 };

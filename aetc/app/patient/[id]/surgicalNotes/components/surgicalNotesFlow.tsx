@@ -86,6 +86,12 @@ export const SurgicalNotesFlow = () => {
     const { gender } = getActivePatientDetails();
     const [activeStep, setActiveStep] = useState<number>(0);
     const { navigateBack } = useNavigation();
+    const hasGynaeHistory = gender === "Female";
+    const reviewIndex = hasGynaeHistory ? 7 : 6;
+    const physicalIndex = hasGynaeHistory ? 8 : 7;
+    const workingDiffIndex = hasGynaeHistory ? 9 : 8;
+    const investigationsIndex = hasGynaeHistory ? 10 : 9;
+    const initialManagementIndex = hasGynaeHistory ? 11 : 10;
 
     const steps = [
         { id: 0, label: "Presenting Complaints" },
@@ -163,31 +169,31 @@ export const SurgicalNotesFlow = () => {
 
             {gender === "Female" && (
                 <>
-                    <GynaeObstetricHistoryForm onSkip={() => { }} onSubmit={() => setActiveStep(7)} />
+                    <GynaeObstetricHistoryForm onSkip={() => { }} onSubmit={() => setActiveStep(reviewIndex)} />
                 </>
             )}
 
             <>
-                <ReviewOfSystemsForm onSkip={() => { }} onSubmit={() => setActiveStep(8)} />
+                <ReviewOfSystemsForm onSkip={() => { }} onSubmit={() => setActiveStep(physicalIndex)} />
                 {/* <StepButtons
                     onNext={() => setActiveStep(8)}
                 /> */}
             </>
             <>
-                <PhysicalExaminationForm onSkip={() => { }} onSubmit={() => setActiveStep(9)} />
+                <PhysicalExaminationForm onSkip={() => { }} onSubmit={() => setActiveStep(workingDiffIndex)} />
                 {/* <StepButtons
                     onNext={() => setActiveStep(9)}
                 /> */}
             </>
             <>
-                <WorkingDifferentialDiagnosisForm onSkip={() => { }} onSubmit={() => setActiveStep(10)} />
+                <WorkingDifferentialDiagnosisForm onSkip={() => { }} onSubmit={() => setActiveStep(investigationsIndex)} />
                 {/* <StepButtons
                     onNext={() => setActiveStep(10)}
                 /> */}
             </>
 
             <>
-                <InvestigationsForm onSkip={() => { }} onSubmit={() => setActiveStep(11)} />
+                <InvestigationsForm onSkip={() => { }} onSubmit={() => setActiveStep(initialManagementIndex)} />
                 {/* <StepButtons
                     onNext={() => setActiveStep(11)}
                 /> */}

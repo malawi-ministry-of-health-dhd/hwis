@@ -46,33 +46,30 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 export const Investigations = () => {
   const sections = [
     {
-         id: "bedside",
-         title: "Bedside",
-         content: (
-           <BedsideTestForm
-           />
-         ),
-       },
-       {
-         id: "labForm",
-         title: "Lab orders",
-         content: (
-           <>
-             <LabRequestForm onClose={() => {}} addRequest={() => {}} />
-             <LabOrderTable />
-           </>
-         ),
-       },
-       {
-         id: "radiology",
-         title: "Radiology",
-         content: (
-           <>
-             <Radiology />
-           </>
-         ),
-       },
-   
+      id: "bedside",
+      title: "Bedside",
+      content: <BedsideTestForm />,
+    },
+    {
+      id: "labForm",
+      title: "Lab orders",
+      content: (
+        <>
+          <LabRequestForm onClose={() => {}} addRequest={() => {}} />
+          <LabOrderTable />
+        </>
+      ),
+    },
+    {
+      id: "radiology",
+      title: "Radiology (Coming Soon)",
+      content: (
+        <>
+          <Radiology />
+        </>
+      ),
+    },
+
     {
       id: "labResults",
       title: "Lab Results",

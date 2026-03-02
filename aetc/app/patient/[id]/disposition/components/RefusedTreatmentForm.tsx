@@ -107,15 +107,16 @@ export default function RefusedTreatmentForm({
 
   const sections = [
     {
+      id: "medication",
+      title: <h2>Prescribe Medications</h2>,
+      content: <AccordionWithMedication />,
+    },
+    {
       id: "refusedForm",
       title: <h2>Refused Treatment Form</h2>,
       content: <RefusedTreatmentFormContent handleSubmit={handleSubmit} />,
     },
-    {
-      id: "medication",
-      title: <h2>Medication</h2>,
-      content: <AccordionWithMedication />,
-    },
+  
   ];
 
   return (

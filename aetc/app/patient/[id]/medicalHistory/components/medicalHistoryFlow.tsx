@@ -139,7 +139,7 @@ export const MedicalHistoryFlow = () => {
     {
       id: 1,
       label: "Symptoms - Presenting Complaints",
-      encounter: encounters.PRESENTING_COMPLAINTS,
+      encounter: encounters.SAMPLE_HISTORY_PRESENTING_COMPLAINTS,
     },
     {
       id: 2,
@@ -147,7 +147,7 @@ export const MedicalHistoryFlow = () => {
       encounter: encounters.REVIEW_OF_SYSTEMS,
     },
     { id: 3, label: "Allergies", encounter: encounters.ALLERGIES },
-    { id: 4, label: "Medications", encounter: encounters.PRESCRIPTIONS },
+    { id: 4, label: "Medications", encounter: encounters.SAMPLE_HISTORY_MEDICATION },
     {
       id: 5,
       label: "Prior/Existing condition",
@@ -221,7 +221,7 @@ export const MedicalHistoryFlow = () => {
 
     try {
       await createEncounter({
-        encounterType: encounters.PRESENTING_COMPLAINTS,
+        encounterType: encounters.SAMPLE_HISTORY_PRESENTING_COMPLAINTS,
         visit: activeVisit?.uuid,
         patient: params.id,
         encounterDatetime: dateTime,
@@ -238,6 +238,28 @@ export const MedicalHistoryFlow = () => {
   };
 
   const handleAllergiesSubmission = async (values: any): Promise<any> => {
+    if (values?.noAllergies) {
+      try {
+        await createEncounter({
+          encounterType: encounters.ALLERGIES,
+          visit: activeVisit?.uuid,
+          patient: params.id,
+          encounterDatetime: dateTime,
+          obs: [
+            {
+              concept: concepts.ALLERGEN_CATEGORY,
+              obsDatetime: dateTime,
+              value: "Patient has no known allergies",
+            },
+          ],
+        });
+        console.log("No known allergies recorded");
+      } catch (error: any) {
+        throw error;
+      }
+      return;
+    }
+
     const groupedAllergies = values[concepts.ALLERGY].reduce(
       (acc: any, allergy: any) => {
         if (!acc[allergy.group]) {
@@ -340,11 +362,33 @@ export const MedicalHistoryFlow = () => {
   }
 
   async function handleMedicationsSubmission(values: any): Promise<any> {
+    if (values?.none) {
+      try {
+        await createEncounter({
+          encounterType: encounters.SAMPLE_HISTORY_MEDICATION,
+          visit: activeVisit?.uuid,
+          patient: params.id,
+          encounterDatetime: dateTime,
+          obs: [
+            {
+              concept: concepts.DESCRIPTION,
+              obsDatetime: dateTime,
+              value: "Patient was not prescribed any medication",
+            },
+          ],
+        });
+        console.log("No medications recorded");
+      } catch (error: any) {
+        throw error;
+      }
+      return;
+    }
+
     // Check if medications is just a string (new format)
     if (typeof values.medications === 'string') {
       try {
         await createEncounter({
-          encounterType: encounters.PRESCRIPTIONS,
+          encounterType: encounters.SAMPLE_HISTORY_MEDICATION,
           visit: activeVisit?.uuid,
           patient: params.id,
           encounterDatetime: dateTime,
@@ -427,7 +471,7 @@ export const MedicalHistoryFlow = () => {
 
     try {
       const response = await createEncounter({
-        encounterType: encounters.PRESCRIPTIONS,
+        encounterType: encounters.SAMPLE_HISTORY_MEDICATION,
         visit: activeVisit?.uuid,
         patient: params.id,
         encounterDatetime: dateTime,
@@ -453,6 +497,28 @@ export const MedicalHistoryFlow = () => {
 
 
   async function handleConditionsSubmission(values: any): Promise<any> {
+    if (values?.none) {
+      try {
+        await createEncounter({
+          encounterType: encounters.DIAGNOSIS,
+          visit: activeVisit?.uuid,
+          patient: params.id,
+          encounterDatetime: dateTime,
+          obs: [
+            {
+              concept: concepts.DIAGNOSIS_DATE,
+              obsDatetime: dateTime,
+              value: "Patient has no prior/existing conditions",
+            },
+          ],
+        });
+        console.log("No prior/existing conditions recorded");
+      } catch (error: any) {
+        throw error;
+      }
+      return;
+    }
+
     // Existing conditions submission logic
     const observationsPayload = values.conditions.map((condition: any) => {
       return {
@@ -663,6 +729,28 @@ export const MedicalHistoryFlow = () => {
   }
 
   async function handleLastMealSubmission(values: any): Promise<any> {
+    if (values?.didNotEat) {
+      try {
+        await createEncounter({
+          encounterType: encounters.SUMMARY_ASSESSMENT,
+          visit: activeVisit?.uuid,
+          patient: params.id,
+          encounterDatetime: dateTime,
+          obs: [
+            {
+              concept: concepts.TIME_OF_LAST_MEAL,
+              obsDatetime: dateTime,
+              value: "Patient did not eat",
+            },
+          ],
+        });
+        console.log("No last meal recorded");
+      } catch (error: any) {
+        throw error;
+      }
+      return;
+    }
+
     const lastMealDate = values.dateOfMeal;
     const lastMealDescription = values.descriptionOfLastMeal;
 
@@ -727,6 +815,28 @@ export const MedicalHistoryFlow = () => {
     }
 
     // Handle Trauma/Injury History
+    if (values["wasInjured"] === "No") {
+      try {
+        await createEncounter({
+          encounterType: encounters.REVIEW_OF_SYSTEMS,
+          visit: activeVisit?.uuid,
+          patient: params.id,
+          encounterDatetime: dateTime,
+          obs: [
+            {
+              concept: concepts.REVIEW_OF_SYSTEMS_TRAUMA,
+              value: "Patient was not injured",
+              obsDatetime: dateTime,
+            },
+          ],
+        });
+        console.log("No injury recorded");
+      } catch (error: any) {
+        throw error;
+      }
+      return;
+    }
+
     if (values["wasInjured"] === "Yes") {
       type InjuryMechanismList = {
         [key: string]: string;

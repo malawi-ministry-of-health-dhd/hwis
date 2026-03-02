@@ -21,6 +21,7 @@ type Prop = {
   showHelperText?: boolean;
   disabled?: boolean;
   onBlur?: (values: any) => void;
+  format?: string;
 };
 
 export const FormDatePicker: FC<Prop> = ({
@@ -32,6 +33,7 @@ export const FormDatePicker: FC<Prop> = ({
   getValue,
   disabled = false,
   onBlur,
+  format = "YYYY-MM-DD",
 }) => {
   const { value, setFieldValue, initialValues, errorMessage } =
     useFormikField(name);
@@ -40,11 +42,18 @@ export const FormDatePicker: FC<Prop> = ({
     getValue && getValue(value);
   }, [value]);
 
-  let initialDate = "";
+  let initialDate: string | number | Date | dayjs.Dayjs | null | undefined =
+    undefined;
 
   if (typeof initialValues == "object" && initialValues !== null) {
     //@ts-ignore
-    initialDate = initialValues[name] as Date;
+    initialDate = initialValues[name] as
+      | string
+      | number
+      | Date
+      | dayjs.Dayjs
+      | null
+      | undefined;
   }
 
   return (
@@ -61,7 +70,14 @@ export const FormDatePicker: FC<Prop> = ({
             "& fieldset": { borderRadius: "5px" },
             ...sx,
           }}
-          defaultValue={dayjs(initialDate)}
+          format={format}
+          value={
+            value
+              ? dayjs(value as string | number | Date | dayjs.Dayjs | null | undefined)
+              : initialDate
+                ? dayjs(initialDate)
+                : null
+          }
           label="" // Keep label empty to avoid internal label rendering
           onChange={(dateValue: any) =>
             setFieldValue(name, dayjs(dateValue).format("YYYY-MM-DD"))

@@ -20,7 +20,7 @@ export const DemographicsSearch = ({
   genericSearch?: boolean;
 }) => {
   const { setSearchedPatient: setSearchedPatientContext } = useContext(
-    SearchRegistrationContext
+    SearchRegistrationContext,
   ) as SearchRegistrationContextType;
 
   const [search, setSearch] = useState({

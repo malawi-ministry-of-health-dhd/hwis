@@ -21,8 +21,6 @@ type Prop = {
   triageStatus: string;
 };
 
-
-
 const triageRedServiceAreas = [
   { label: concepts.RESUSCITATION, id: concepts.RESUSCITATION },
   { label: concepts.SHORT_STAY, id: concepts.SHORT_STAY },
@@ -45,7 +43,7 @@ export const ServiceAreaForm = ({ onSubmit, triageStatus }: Prop) => {
   >([]);
 
   const { data: serviceAreas, isLoading: serviceAreaLoading } = getConceptSet(
-    concepts.SERVICE_AREAS
+    concepts.SERVICE_AREAS,
   );
   const { data: aetcServiceAreas, isLoading: aetcServiceAreaLoading } =
     getConceptSet(concepts.AETC_SERVICE_AREAS);
@@ -77,16 +75,16 @@ export const ServiceAreaForm = ({ onSubmit, triageStatus }: Prop) => {
         (service: any) =>
           service.name.toLowerCase() == concepts.GYNAE_BENCH.toLowerCase() ||
           service.name.toLowerCase() == concepts.SURGICAL_BENCH.toLowerCase() ||
-          service.name.toLowerCase() == concepts.MEDICAL_BENCH.toLowerCase()
+          service.name.toLowerCase() == concepts.MEDICAL_BENCH.toLowerCase(),
       );
 
-      if(triageStatus=='red'){
-        setServiceAreaOptions(triageRedServiceAreas);
-        return;
-      }
+      // if(triageStatus=='red'){
+      //   setServiceAreaOptions(triageRedServiceAreas);
+      //   return;
+      // }
 
       const selectedList =
-        triageStatus === "yellow"
+        triageStatus === "yellow" || triageStatus === "red"
           ? aetcServiceAreas
           : [
               ...(Array.isArray(aectTriageGreenServiceAreas)
@@ -102,7 +100,7 @@ export const ServiceAreaForm = ({ onSubmit, triageStatus }: Prop) => {
         }));
         setServiceAreaOptions(options);
         const otherOption = options.find(
-          (option: { id: string; label: string }) => option.label === "Other"
+          (option: { id: string; label: string }) => option.label === "Other",
         );
         setOtherId(otherOption ? otherOption.id : null);
       }

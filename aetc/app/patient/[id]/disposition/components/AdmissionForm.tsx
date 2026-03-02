@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import * as Yup from "yup";
 
@@ -10,15 +10,18 @@ import {
     FormikInit,
     TextInputField,
     SearchComboBox,
+    MainButton,
 } from "@/components";
 import { getPatientVisitTypes } from "@/hooks/patientReg";
-import { fetchConceptAndCreateEncounter } from "@/hooks/encounter";
+import { fetchConceptAndCreateEncounter, getPatientsEncounters } from "@/hooks/encounter";
 import { useParameters } from "@/hooks";
 import { useServerTime } from "@/contexts/serverTimeContext";
 import { Visit } from "@/interfaces";
 import { concepts, encounters } from "@/constants";
 import { AccordionWithMedication } from "./AccordionWithMedication";
 import { AccordionComponent } from "@/components/accordion";
+import { toast } from "react-toastify";
+import { Box, Typography } from "@mui/material";
 
 export default function AdmissionForm({
     openPatientSummary,
@@ -30,6 +33,25 @@ export default function AdmissionForm({
     const { ServerTime } = useServerTime();
     const [activeVisit, setActiveVisit] = useState<Visit | undefined>(undefined);
     const { data: patientVisits } = getPatientVisitTypes(params.id as string);
+    const { data: diagnosisEncounters } = getPatientsEncounters(
+        params.id as string,
+        activeVisit?.uuid
+            ? `encounter_type=${encounters.OUTPATIENT_DIAGNOSIS}&visit=${activeVisit.uuid}`
+            : undefined
+    );
+
+    const isFinalDiagnosisReady = useMemo(
+        () =>
+            (diagnosisEncounters ?? []).some((encounter: any) =>
+                (encounter?.obs ?? []).some(
+                    (ob: any) =>
+                        ob?.names?.some(
+                            (n: any) => n?.name === concepts.FINAL_DIAGNOSIS
+                        ) && (ob?.value_text ?? ob?.value)
+                )
+            ),
+        [diagnosisEncounters]
+    );
 
     useEffect(() => {
         if (patientVisits) {
@@ -40,6 +62,21 @@ export default function AdmissionForm({
 
     const handleSubmit = async (values: any) => {
         const currentDateTime = ServerTime.getServerTimeString();
+
+        const hasFinalDiagnosis = (diagnosisEncounters ?? []).some(
+            (encounter: any) =>
+                (encounter?.obs ?? []).some(
+                    (ob: any) =>
+                        ob?.names?.some(
+                            (n: any) => n?.name === concepts.FINAL_DIAGNOSIS
+                        ) && (ob?.value_text ?? ob?.value)
+                )
+        );
+
+        if (!hasFinalDiagnosis) {
+            toast.error("Final Diagnosis is required before submitting disposition.");
+            return;
+        }
 
         const obs = [
           {
@@ -89,15 +126,21 @@ export default function AdmissionForm({
 
     const sections = [
         {
-            id: "admission",
-            title: <h2>Admission</h2>,
-            content: <AdmissionFormContent onSubmit={handleSubmit} />,
-        },
-        {
             id: "medications",
             title: <h2>Prescribe Medications</h2>,
             content: <AccordionWithMedication />,
         },
+        {
+            id: "admission",
+            title: <h2>Admission</h2>,
+            content: (
+                <AdmissionFormContent
+                    onSubmit={handleSubmit}
+                    isFinalDiagnosisReady={isFinalDiagnosisReady}
+                />
+            ),
+        },
+      
     ];
 
     return (
@@ -131,6 +174,15 @@ const wardOptions = [
         id: concepts.MAIN_LABOUR_WARD,
         label: "Main Labour ward",
     },
+    {
+        id: concepts.FOUR_A_FEMALE_WARD,
+        label: "4A Female ward",
+    },
+    {
+        id: concepts.FOUR_A_HDU,
+        label: "4A HDU",
+    },
+
     {
         id: concepts.ANTENATAL_WARD,
         label: "Antenatal ward",
@@ -241,8 +293,10 @@ const specialtyOptions = [
 
 function AdmissionFormContent({
     onSubmit,
+    isFinalDiagnosisReady,
 }: {
     onSubmit: (values: typeof initialValues) => void;
+    isFinalDiagnosisReady: boolean;
 }) {
     const { gender } = getActivePatientDetails();
     const [filteredWardOptions, setFilteredWardOptions] = useState(wardOptions);
@@ -271,15 +325,24 @@ function AdmissionFormContent({
             initialValues={initialValues}
             validationSchema={validationSchema}
             onSubmit={onSubmit}
-            submitButtonText="Submit"
+            submitButton={isFinalDiagnosisReady}
         >
-            <MainGrid container spacing={2}>
+            <>
+                {!isFinalDiagnosisReady && (
+                    <Box sx={{ mb: 2, p: 1.5, bgcolor: "#fff3cd", border: "1px solid #ffeeba", borderRadius: "4px" }}>
+                        <Typography variant="body2" color="text.primary">
+                            Final Diagnosis is required before submitting disposition.
+                        </Typography>
+                    </Box>
+                )}
+                <MainGrid container spacing={2}>
                 <MainGrid item xs={12} lg={6}>
                     <SearchComboBox
                         name="wardName"
                         label="Ward Name"
                         options={filteredWardOptions}
                         multiple={false}
+                        disabled={!isFinalDiagnosisReady}
                     />
                 </MainGrid>
 
@@ -290,6 +353,7 @@ function AdmissionFormContent({
                         label="Bed Number"
                         placeholder="Enter Bed Number"
                         sx={{ width: "100%" }}
+                        disabled={!isFinalDiagnosisReady}
                     />
                 </MainGrid>
 
@@ -302,6 +366,7 @@ function AdmissionFormContent({
                         rows={4}
                         multiline
                         sx={{ width: "100%" }}
+                        disabled={!isFinalDiagnosisReady}
                     />
                 </MainGrid>
 
@@ -311,9 +376,21 @@ function AdmissionFormContent({
                         label="Specialty Involved"
                         options={specialtyOptions}
                         multiple={false}
+                        disabled={!isFinalDiagnosisReady}
                     />
                 </MainGrid>
-            </MainGrid>
+                </MainGrid>
+
+                {!isFinalDiagnosisReady && (
+                    <MainButton
+                        sx={{ mt: 3 }}
+                        title="Submit"
+                        type="submit"
+                        disabled
+                        onClick={() => {}}
+                    />
+                )}
+            </>
         </FormikInit>
     );
 }

@@ -27,7 +27,7 @@ import {
   getPatientsEncounters,
 } from "@/hooks/encounter";
 import { closeCurrentVisit } from "@/hooks/visit";
-import { concepts, encounters } from "@/constants";
+import { concepts, encounters, roles } from "@/constants";
 import { getObservationValue } from "@/helpers/emr";
 import { useServerTime } from "@/contexts/serverTimeContext";
 import { EditReferralForm } from "@/app/patient/components/editReferral";
@@ -41,6 +41,7 @@ import { DDEPatientRegistration } from "../../components/ddePatientRegistration"
 import { PrinterBarcodeButton } from "@/components/barcodePrinterDialogs";
 import { Button, Chip, Typography } from "@mui/material";
 import { AbscondButton } from "@/components/abscondButton";
+import { AuthGuardComp } from "@/helpers/authguardcomponent";
 
 export const SearchResults = ({
   searchedPatient,
@@ -55,12 +56,12 @@ export const SearchResults = ({
   const { params } = useParameters();
   const [open, setOpen] = useState(false);
   const { setRegistrationType, setPatient, patient } = useContext(
-    SearchRegistrationContext
+    SearchRegistrationContext,
   ) as SearchRegistrationContextType;
   const [type, setType] = useState("");
 
   const { setPatient: setRegisterPatient } = useContext(
-    SearchRegistrationContext
+    SearchRegistrationContext,
   ) as SearchRegistrationContextType;
 
   const handleNewRecord = () => {
@@ -202,7 +203,7 @@ export const ResultBox = ({
 
   // return <></>;
   const identifier = person?.identifiers?.find(
-    (i: any) => i?.identifier_type?.name == "National id"
+    (i: any) => i?.identifier_type?.name == "National id",
   );
 
   return (
@@ -254,7 +255,7 @@ export const ResultBox = ({
           />
         )}
         {type == "Local" && genericSearch && (
-          <>
+          <AuthGuardComp roles={[roles.ADMIN]}>
             <Button
               onClick={() => navigateTo(`/patient/${person.uuid}/profile`)}
               sx={{ mb: "1ch" }}
@@ -262,7 +263,7 @@ export const ResultBox = ({
             >
               view profile
             </Button>
-          </>
+          </AuthGuardComp>
         )}
 
         {visitActive && !genericSearch && (
@@ -389,12 +390,12 @@ const ViewPatientDialog = ({
 
   // encounters for the patient registered during the initial registration
   const { data: patientEncounters } = getPatientsEncounters(
-    params?.id as string
+    params?.id as string,
   );
 
   // encounters for patient that was found in the system
   const { data: existingPatientEncounters, isPending } = getPatientsEncounters(
-    patient?.uuid
+    patient?.uuid,
   );
   const { mutate: closeVisit, isSuccess: visitClosed } = closeCurrentVisit();
 
@@ -466,13 +467,13 @@ const ViewPatientDialog = ({
   useEffect(() => {
     const referralEncounter = patientEncounters?.find(
       (encounter) =>
-        encounter.encounter_type.uuid == encounters.SCREENING_ENCOUNTER
+        encounter.encounter_type.uuid == encounters.SCREENING_ENCOUNTER,
     );
 
     //TODO: remove the hard coded concept
     const referred = getObservationValue(
       referralEncounter?.obs,
-      concepts.IS_PATIENT_REFERRED
+      concepts.IS_PATIENT_REFERRED,
     );
 
     setIsReferred(referred);
@@ -549,10 +550,10 @@ const ViewPatientDialog = ({
 
   useEffect(() => {
     const financing = existingPatientEncounters?.find(
-      (p) => p.encounter_type.uuid == encounters.FINANCING
+      (p) => p.encounter_type.uuid == encounters.FINANCING,
     );
     const socialHistory = existingPatientEncounters?.find(
-      (p) => p.encounter_type.uuid == encounters.SOCIAL_HISTORY
+      (p) => p.encounter_type.uuid == encounters.SOCIAL_HISTORY,
     );
 
     if (socialHistory) setSocialHistory(socialHistory);
@@ -568,7 +569,7 @@ const ViewPatientDialog = ({
 
   const handleTransformFinancing = (financingData: any) => {
     const found = financingData[concepts.PAYMENT_OPTIONS].filter(
-      (opt: any) => opt.value
+      (opt: any) => opt.value,
     );
 
     // TODO: remove this and have a proper implementation
@@ -698,7 +699,7 @@ const ConfirmationDialog = ({
     useContext(SearchRegistrationContext) as SearchRegistrationContextType;
 
   const identifier = patient?.identifiers?.find(
-    (id) => id?.identifier_type?.name == "DDE person document ID"
+    (id) => id?.identifier_type?.name == "DDE person document ID",
   );
 
   useEffect(() => {

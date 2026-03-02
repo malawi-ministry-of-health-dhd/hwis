@@ -39,7 +39,7 @@ export const TriageNotes = ({ visitId, patientId }: TriageNotesProps) => {
   const pulse = getObservationValue(
     vitalsDetailsData?.[0]?.obs,
     concepts.PULSE_RATE
-  );
+  ) || getObservationValue(vitalsDetailsData?.[0]?.obs, "Pulse");
   const heart = getObservationValue(
     vitalsDetailsData?.[0]?.obs,
     concepts.HEART_RATE
@@ -59,7 +59,12 @@ export const TriageNotes = ({ visitId, patientId }: TriageNotesProps) => {
   const oxygenSaturation = getObservationValue(
     vitalsDetailsData?.[0]?.obs,
     concepts.PULSE_OXIMETRY
-  );
+  ) ||
+    getObservationValue(
+      vitalsDetailsData?.[0]?.obs,
+      concepts.BLOOD_OXYGEN_SATURATION
+    ) ||
+    getObservationValue(vitalsDetailsData?.[0]?.obs, "Blood oxygen saturation");
   const glucose = getObservationValue(
     vitalsDetailsData?.[0]?.obs,
     concepts.GLUCOSE
@@ -102,7 +107,7 @@ export const TriageNotes = ({ visitId, patientId }: TriageNotesProps) => {
       >
         {/* Presenting Complaints */}
         <ListItem sx={{ display: "list-item" }}>
-          <b>Presenting Complaints:</b>{" "}
+          <span>Presenting Complaints:</span>{" "}
           {presentingComplaints.length > 0
             ? presentingComplaints
                 .map((obs, index) => ` (${index + 1}). ` + obs.value)
@@ -112,13 +117,13 @@ export const TriageNotes = ({ visitId, patientId }: TriageNotesProps) => {
 
         {/* Vital Signs */}
         <ListItem sx={{ display: "list-item" }}>
-          <b>Vital Signs:</b> {vitalSigns}
+          <span>Vital Signs:</span> {vitalSigns}
         </ListItem>
         <ListItem sx={{ display: "list-item" }}>
-          <b>Triage Category:</b> {triageCategoryValue}
+          <span>Triage Category:</span> {triageCategoryValue}
         </ListItem>
         <ListItem sx={{ display: "list-item" }}>
-          <b>Patient Care Area:</b> {patientCareArea}
+          <span>Patient Care Area:</span> {patientCareArea}
         </ListItem>
       </List>
       <Box

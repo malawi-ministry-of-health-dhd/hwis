@@ -18,7 +18,12 @@ interface PaginationModel {
   pageSize: number;
 }
 
-export const fetchPatientsTablePaginate = (category: Category, patientCareArea?: string, creator?:string) => {
+export const fetchPatientsTablePaginate = (
+  category: Category,
+  patientCareArea?: string,
+  creator?: string,
+  department?: string,
+) => {
   const [paginationModel, setPaginationModel] = useState<PaginationModel>({
     page: 0,
     pageSize: 10,
@@ -32,7 +37,14 @@ export const fetchPatientsTablePaginate = (category: Category, patientCareArea?:
 
   useEffect(() => {
     fetchData();
-  }, [patientCareArea, paginationModel, searchText, onSwitch, creator]);
+  }, [
+    patientCareArea,
+    paginationModel,
+    searchText,
+    onSwitch,
+    creator,
+    department,
+  ]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -50,7 +62,8 @@ export const fetchPatientsTablePaginate = (category: Category, patientCareArea?:
         paginationModel.page + 1,
         date || "",
         patientCareArea,
-        creator
+        creator,
+        department,
       );
 
       setPatients(response.data.data);
@@ -62,8 +75,7 @@ export const fetchPatientsTablePaginate = (category: Category, patientCareArea?:
     } finally {
       setLoading(false);
     }
-  }
-
+  };
 
   return {
     loading,
@@ -86,21 +98,23 @@ export const getPatientsFromCacheOrFetch = async (
   page: number,
   date: string,
   patientCareArea?: string,
-  creator?: string
-
+  creator?: string,
+  department?: string,
 ): Promise<any> => {
- 
-    let query = `category=${category}&page=${page}&page_size=${pageSize}&search=${searchString}&date=${date}`;
+  let query = `category=${category}&page=${page}&page_size=${pageSize}&search=${searchString}&date=${date}`;
 
-    if (patientCareArea) {
-      query = query +`&patient_care_area=${encodeURIComponent(patientCareArea)}`;
-    }
-    
-    if (creator) {
-      query = query + `&last_encounter_creator=${encodeURIComponent(creator)}`;
-    }
-    
-    const patientList = await getDailyVisitsPaginated(query);
+  if (patientCareArea) {
+    query = query + `&patient_care_area=${encodeURIComponent(patientCareArea)}`;
+  }
+  if (department) {
+    query = query + `&department=${encodeURIComponent(department)}`;
+  }
+
+  if (creator) {
+    query = query + `&last_encounter_creator=${encodeURIComponent(creator)}`;
+  }
+
+  const patientList = await getDailyVisitsPaginated(query);
 
   return patientList;
   // }

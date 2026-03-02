@@ -96,7 +96,7 @@ export default function AwaitingSpecialityReviewForm({ openPatientSummary }: { o
                 obsDatetime: currentDateTime,
               },
               {
-                concept: concepts.DATE,
+                concept: concepts.DATE_OF_ABSCONDING,
                 value: values.reviewDate,
                 obsDatetime: currentDateTime,
               },
@@ -122,15 +122,16 @@ export default function AwaitingSpecialityReviewForm({ openPatientSummary }: { o
 
     const sections = [
         {
-            id: "awaitingSpecialty",
-            title: <h2>Awaiting Specialty Review</h2>,
-            content: <AwaitingSpecialityReviewFormContent onSubmit={handleSubmit} />,
-        },
-        {
             id: "medications",
             title: <h2>Prescribe Medications</h2>,
             content: <AccordionWithMedication />,
         },
+        {
+            id: "awaitingSpecialty",
+            title: <h2>Awaiting Specialty Review</h2>,
+            content: <AwaitingSpecialityReviewFormContent onSubmit={handleSubmit} />,
+        },
+      
     ];
 
     return (

@@ -36,11 +36,15 @@ export const ActivePatientProvider = ({
   const { params } = useParameters();
   const {
     data: patientVisits,
-    isLoading,
-    isSuccess,
+    isLoading: isLoadingVisits,
+    isSuccess: isVisitsSuccess,
   } = getPatientVisitTypes(params?.id as string);
 
-  const { data: patient } = getOnePatient(params?.id as string);
+  const {
+    data: patient,
+    isLoading: isLoadingPatient,
+    isSuccess: isPatientSuccess,
+  } = getOnePatient(params?.id as string);
   const activeVisit = patient?.active_visit;
 
   const recentClosedVisit =
@@ -49,15 +53,20 @@ export const ActivePatientProvider = ({
       : null;
 
   useEffect(() => {
-    if (isSuccess) setHasActiveVisit(Boolean(activeVisit));
-  }, [activeVisit, isSuccess]);
+    if (!isVisitsSuccess || !isPatientSuccess) {
+      setHasActiveVisit(null);
+      return;
+    }
+
+    setHasActiveVisit(Boolean(activeVisit));
+  }, [activeVisit, isVisitsSuccess, isPatientSuccess]);
 
   const value: PatientContextProps = {
     activeVisit: activeVisit?.uuid,
     patientId: params?.id as string,
     activeVisitId: activeVisit?.visit_id as unknown as string,
-    isLoading,
-    isSuccess,
+    isLoading: isLoadingVisits || isLoadingPatient,
+    isSuccess: isVisitsSuccess && isPatientSuccess,
     gender: patient?.gender,
     patient,
     hasActiveVisit,

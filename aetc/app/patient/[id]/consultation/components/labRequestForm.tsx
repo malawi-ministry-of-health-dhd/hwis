@@ -161,7 +161,7 @@ export const LabRequestForm: React.FC<LabFormProps> = ({
   } = getConceptSetMembers(bedsideTestId);
 
   const [samples, setSamples] = useState<Concept[]>([]);
-  const [tests, setTests] = useState<Concept[]>([]);
+  const [tests, setTests] = useState<any>([]);
 
   const { params } = useParameters();
   const { activeVisit, patientId } = getActivePatientDetails();
@@ -171,12 +171,12 @@ export const LabRequestForm: React.FC<LabFormProps> = ({
   const { data: labOrdersPlan, refetch: refetchLabOrdersPlan } =
     getPatientsEncounters(
       params?.id as string,
-      `encounter_type=${encounters.LAB_ORDERS_PLAN}&visit=${selectedVisit?.uuid}`
+      `encounter_type=${encounters.LAB_ORDERS_PLAN}&visit=${selectedVisit?.uuid}`,
     );
   const { data: labOrdersObs, refetch: refetchLabOrders } =
     getPatientsEncounters(
       params?.id as string,
-      `encounter_type=${encounters.LAB}&visit=${selectedVisit?.uuid}`
+      `encounter_type=${encounters.LAB}&visit=${selectedVisit?.uuid}`,
     );
 
   useEffect(() => {
@@ -292,7 +292,7 @@ export const LabRequestForm: React.FC<LabFormProps> = ({
         groups[key].push(test);
         return groups;
       },
-      {} as Record<string, any[]>
+      {} as Record<string, any[]>,
     );
 
     // Create orders for each specimen type and date combination
@@ -306,14 +306,14 @@ export const LabRequestForm: React.FC<LabFormProps> = ({
         const mappedTests = await Promise.all(
           testsArray.map(async (test) => ({
             concept: await getConceptFromCacheOrFetch(test.testName).then(
-              (res) => res.data[0].uuid
+              (res) => res.data[0].uuid,
             ),
-          }))
+          })),
         );
 
         // Get specimen concept (using the first test in this group)
         const specimenConcept = await getConceptFromCacheOrFetch(
-          specimenType
+          specimenType,
         ).then((res) => res.data[0].uuid);
 
         return {
@@ -330,7 +330,7 @@ export const LabRequestForm: React.FC<LabFormProps> = ({
             specimenType: specimenType,
           },
         };
-      }
+      },
     );
 
     // Resolve all order promises
@@ -373,12 +373,14 @@ export const LabRequestForm: React.FC<LabFormProps> = ({
         let descriptionConcept;
         if (test.children && test.children.length > 0) {
           descriptionConcept = test.children.find((child: any) =>
-            child.names.find((name: any) => name.name == concepts.DESCRIPTION)
+            child.names.find((name: any) => name.name == concepts.DESCRIPTION),
           );
         }
 
         return {
-          test: test.names[0].name,
+          test:
+            test.names.find((n: any) => n.locale_preferred == 1)?.name ||
+            "Unknown Test",
           testConceptId: test.concept_id,
           date: obs.obs_datetime,
           specimen: obs.names[0].name,
@@ -393,7 +395,7 @@ export const LabRequestForm: React.FC<LabFormProps> = ({
     if (labOrdersObs && labOrdersObs?.length > 0)
       flattenedLabOrdersPlan = filterTests(
         flattenedLabOrdersPlan,
-        labOrdersObs
+        labOrdersObs,
       );
   }
 
@@ -407,7 +409,7 @@ export const LabRequestForm: React.FC<LabFormProps> = ({
       groups[key].push(item);
       return groups;
     },
-    {} as GroupedTests
+    {} as GroupedTests,
   );
 
   return (
