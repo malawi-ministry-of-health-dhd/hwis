@@ -55,55 +55,41 @@ export const PatientInfoPrintDialog = ({
   });
 
   const formatLabResult = (result: any): string => {
+    const formatResultItem = (item: any): string => {
+      if (item === null || item === undefined || item === "") return "";
+      if (typeof item === "string" || typeof item === "number") {
+        return String(item);
+      }
+
+      if (typeof item === "object") {
+        const indicatorName = (item?.indicator?.name || item?.name || "").trim();
+        const value =
+          item?.value !== null && item?.value !== undefined && item?.value !== ""
+            ? String(item.value)
+            : item?.result !== null &&
+                item?.result !== undefined &&
+                item?.result !== ""
+              ? String(item.result)
+              : "";
+
+        if (indicatorName && value) return `${indicatorName}:${value}`;
+        if (value) return value;
+      }
+
+      return "";
+    };
+
     if (result === null || result === undefined || result === "") {
       return "Pending";
     }
 
-    if (typeof result === "string" || typeof result === "number") {
-      return String(result);
-    }
-
     if (Array.isArray(result)) {
-      const values = result
-        .map((item) => {
-          if (item === null || item === undefined) return "";
-          if (typeof item === "string" || typeof item === "number") {
-            return String(item);
-          }
-          if (typeof item === "object") {
-            if (item.value !== null && item.value !== undefined && item.value !== "") {
-              return String(item.value);
-            }
-            if (
-              item.result !== null &&
-              item.result !== undefined &&
-              item.result !== ""
-            ) {
-              return String(item.result);
-            }
-          }
-          return "";
-        })
-        .filter(Boolean);
-
+      const values = result.map((item) => formatResultItem(item)).filter(Boolean);
       return values.length ? values.join(", ") : "Pending";
     }
 
-    if (typeof result === "object") {
-      if (result.value !== null && result.value !== undefined && result.value !== "") {
-        return String(result.value);
-      }
-      if (
-        result.result !== null &&
-        result.result !== undefined &&
-        result.result !== ""
-      ) {
-        return String(result.result);
-      }
-      return "Pending";
-    }
-
-    return "Pending";
+    const formattedResult = formatResultItem(result);
+    return formattedResult || "Pending";
   };
 
   const { data: presentingComplaintsData } = getPatientsEncounters(
