@@ -22,10 +22,14 @@ import { getActivePatientDetails } from "@/hooks";
 type Prop = {
   onClose: () => void;
   open: boolean;
-  initialNotes?: any
+  initialNotes?: any;
 };
 
-export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) => {
+export const PatientInfoPrintDialog = ({
+  onClose,
+  open,
+  initialNotes,
+}: Prop) => {
   const { params } = useParameters();
   const [diagnosis, setDiagnosis] = useState<Obs[]>([]);
   const [presentingComplaints, setPresentingComplaints] = useState<Obs[]>([]);
@@ -33,7 +37,9 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
   const [printer, setPrinter] = useState("");
   const { selectedVisit } = useVisitDates();
   const { activeVisit, activeVisitId } = getActivePatientDetails();
-  const [effectiveVisitId, setEffectiveVisitId] = useState<string | number | null>(null);
+  const [effectiveVisitId, setEffectiveVisitId] = useState<
+    string | number | null
+  >(null);
   const [summaryMeta, setSummaryMeta] = useState<{
     createdBy: string;
     completedAt: string;
@@ -48,18 +54,56 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
     homeCareInstructions: "",
   });
 
+  const formatLabResult = (result: any): string => {
+    const formatResultItem = (item: any): string => {
+      if (item === null || item === undefined || item === "") return "";
+      if (typeof item === "string" || typeof item === "number") {
+        return String(item);
+      }
+
+      if (typeof item === "object") {
+        const indicatorName = (item?.indicator?.name || item?.name || "").trim();
+        const value =
+          item?.value !== null && item?.value !== undefined && item?.value !== ""
+            ? String(item.value)
+            : item?.result !== null &&
+                item?.result !== undefined &&
+                item?.result !== ""
+              ? String(item.result)
+              : "";
+
+        if (indicatorName && value) return `${indicatorName}:${value}`;
+        if (value) return value;
+      }
+
+      return "";
+    };
+
+    if (result === null || result === undefined || result === "") {
+      return "Pending";
+    }
+
+    if (Array.isArray(result)) {
+      const values = result.map((item) => formatResultItem(item)).filter(Boolean);
+      return values.length ? values.join(", ") : "Pending";
+    }
+
+    const formattedResult = formatResultItem(result);
+    return formattedResult || "Pending";
+  };
+
   const { data: presentingComplaintsData } = getPatientsEncounters(
     params?.id as string,
-    `encounter_type=${encounters.PRESENTING_COMPLAINTS}`
+    `encounter_type=${encounters.PRESENTING_COMPLAINTS}`,
   );
 
   const { data } = getPatientsEncounters(
     params?.id as string,
-    `encounter_type=${encounters.OUTPATIENT_DIAGNOSIS}`
+    `encounter_type=${encounters.OUTPATIENT_DIAGNOSIS}`,
   );
   const { data: disposition } = getPatientsEncounters(
     params?.id as string,
-    `encounter_type=${encounters.DISPOSITION}`
+    `encounter_type=${encounters.DISPOSITION}`,
   );
 
   const { data: ordersData } = getPatientLabOrder(params?.id as string);
@@ -69,7 +113,9 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
       setEffectiveVisitId(selectedVisit.id);
       return;
     }
-    const activeVisitObj = activeVisit as unknown as { uuid?: string } | undefined;
+    const activeVisitObj = activeVisit as unknown as
+      | { uuid?: string }
+      | undefined;
     if (activeVisitObj?.uuid) {
       setEffectiveVisitId(activeVisitObj.uuid);
       return;
@@ -84,9 +130,15 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
   const matchesVisit = (encounter: any) => {
     if (!effectiveVisitId) return true;
     const visitIdString = String(effectiveVisitId);
-    if (encounter?.visit?.uuid && String(encounter.visit.uuid) === visitIdString) return true;
-    if (encounter?.visit_id && String(encounter.visit_id) === visitIdString) return true;
-    if (selectedVisit?.id && encounter?.visit_id === selectedVisit.id) return true;
+    if (
+      encounter?.visit?.uuid &&
+      String(encounter.visit.uuid) === visitIdString
+    )
+      return true;
+    if (encounter?.visit_id && String(encounter.visit_id) === visitIdString)
+      return true;
+    if (selectedVisit?.id && encounter?.visit_id === selectedVisit.id)
+      return true;
     return false;
   };
 
@@ -94,7 +146,7 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
     if (data) {
       const visitData = data?.filter((d: any) => matchesVisit(d));
       const finalDiagnosis = visitData?.[0]?.obs?.filter((ob) =>
-        ob.names.find((n) => n.name === concepts.FINAL_DIAGNOSIS)
+        ob.names.find((n) => n.name === concepts.FINAL_DIAGNOSIS),
       );
       setDiagnosis(finalDiagnosis);
     }
@@ -108,11 +160,12 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
 
   useEffect(() => {
     if (presentingComplaintsData) {
-      const visitData = presentingComplaintsData.filter((d: any) => matchesVisit(d));
+      const visitData = presentingComplaintsData.filter((d: any) =>
+        matchesVisit(d),
+      );
       setPresentingComplaints(visitData?.[0]?.obs);
     }
   }, [presentingComplaintsData, selectedVisit, effectiveVisitId]);
-
 
   useEffect(() => {
     if (initialNotes) {
@@ -120,34 +173,35 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
       // still allow summary meta to be set from disposition
     }
     if (disposition) {
-      const visitDisposition = disposition.filter((d: any) => matchesVisit(d))[0];
-      const dischargedOb = visitDisposition
-        ?.obs.find((d: Obs) =>
-          d.names.find((n) => n.name == concepts.DISCHARGE_HOME)
-        );
+      const visitDisposition = disposition.filter((d: any) =>
+        matchesVisit(d),
+      )[0];
+      const dischargedOb = visitDisposition?.obs.find((d: Obs) =>
+        d.names.find((n) => n.name == concepts.DISCHARGE_HOME),
+      );
       const dischargeNotes = getObservationValue(
         dischargedOb?.children,
-        concepts.DISCHARGE_NOTES
+        concepts.DISCHARGE_NOTES,
       );
       const dischargePlan = getObservationValue(
         dischargedOb?.children,
-        concepts.DISCHARGE_PLAN
+        concepts.DISCHARGE_PLAN,
       );
       const followUpDetails = getObservationValue(
         dischargedOb?.children,
-        concepts.FOLLOWUP_DETAILS
+        concepts.FOLLOWUP_DETAILS,
       );
       const followUpPlan = getObservationValue(
         dischargedOb?.children,
-        concepts.FOLLOWUP_PLAN
+        concepts.FOLLOWUP_PLAN,
       );
       const clinic = getObservationValue(
         dischargedOb?.children,
-        concepts.SPECIALIST_CLINIC
+        concepts.SPECIALIST_CLINIC,
       );
       const homeCareInstructions = getObservationValue(
         dischargedOb?.children,
-        concepts.HOME_CARE_INSTRUCTIONS
+        concepts.HOME_CARE_INSTRUCTIONS,
       );
 
       (async () => {
@@ -172,10 +226,18 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
   }, [disposition, selectedVisit, effectiveVisitId]);
 
   const handleOnPrint = async () => {
+    const printableLabOrders = patientLabOrders.map((order) => ({
+      ...order,
+      tests: (order?.tests || []).map((test: any) => ({
+        ...test,
+        result: formatLabResult(test?.result),
+      })),
+    }));
+
     const zpl = generatePatientSummaryZPL({
       presentingComplaints,
       diagnosis,
-      labOrders: patientLabOrders,
+      labOrders: printableLabOrders,
       dischargeNotes: notes.dischargeNotes,
       dischargePlan: notes.dischargePlan,
       followUpPlan: `${notes.followUpDetails} | ${notes.clinic}`,
@@ -267,10 +329,10 @@ export const PatientInfoPrintDialog = ({ onClose, open, initialNotes }: Prop) =>
                   {test.name}
                 </Grid>
                 <Grid item xs={4}>
-                  {test.result || "Pending"}
+                  {formatLabResult(test?.result)}
                 </Grid>
               </Grid>
-            ))
+            )),
           )}
         </Box>
         <Divider />
