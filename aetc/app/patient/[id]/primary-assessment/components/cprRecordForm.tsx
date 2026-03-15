@@ -139,16 +139,14 @@ const recordValidationSchema = Yup.object().shape({
     .min(0)
     .max(360)
     .label(form.shockEnergy.label),
-  [form.medication.name]: Yup.string().required().label(form.medication.label),
-  [form.dose.name]: Yup.string().required().label(form.dose.label),
+  [form.medication.name]: Yup.string().label(form.medication.label),
+  [form.dose.name]: Yup.string().label(form.dose.label),
   [form.route.name]: Yup.string().label(form.route.label),
-  [form.doseUnit.name]: Yup.string().required().label(form.doseUnit.label),
+  [form.doseUnit.name]: Yup.string().label(form.doseUnit.label),
   [form.interventions.name]: Yup.array()
     .required()
     .label(form.interventions.label),
-  [form.occurrences.name]: Yup.string()
-    .required()
-    .label(form.occurrences.label),
+  [form.occurrences.name]: Yup.string().label(form.occurrences.label),
   [form.time.name]: Yup.string().required().label(form.time.label),
   [form.reversibleCauses.name]: Yup.array()
     .required()

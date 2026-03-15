@@ -274,64 +274,68 @@ export const EndCPRForm = ({
           )}
           <br />
 
-          <Typography variant="h6">Vital signs after ROSC</Typography>
-          <br />
+          {values[form.reasonsCprStopped.name] === concepts.ROSC && (
+            <>
+              <Typography variant="h6">Vital signs after ROSC</Typography>
+              <br />
 
-          <FormFieldContainerMultiple>
-            <TextInputField
-              name={form.spo.name}
-              label={form.spo.label}
-              id={form.spo.name}
-              sx={{ width: "100%" }}
-              unitOfMeasure="%"
-            />
+              <FormFieldContainerMultiple>
+                <TextInputField
+                  name={form.spo.name}
+                  label={form.spo.label}
+                  id={form.spo.name}
+                  sx={{ width: "100%" }}
+                  unitOfMeasure="%"
+                />
 
-            <RadioGroupInput
-              name={form.oxygen.name}
-              label={form.oxygen.label}
-              options={radioOptions}
-              row
-            />
+                <RadioGroupInput
+                  name={form.oxygen.name}
+                  label={form.oxygen.label}
+                  options={radioOptions}
+                  row
+                />
 
-            <TextInputField
-              name={form.systolic.name}
-              label={form.systolic.label}
-              id={form.systolic.name}
-              sx={{ width: "100%" }}
-              unitOfMeasure="mmHg"
-            />
-            <TextInputField
-              name={form.diastolic.name}
-              label={form.diastolic.label}
-              id={form.diastolic.name}
-              sx={{ width: "100%" }}
-              unitOfMeasure="mmHg"
-            />
-          </FormFieldContainerMultiple>
-          <FormFieldContainerMultiple>
-            <TextInputField
-              name={form.respiratoryRate.name}
-              label={form.respiratoryRate.label}
-              id={form.respiratoryRate.name}
-              sx={{ width: "100%" }}
-              unitOfMeasure="BPM"
-            />
-            <TextInputField
-              name={form.pulseRate.name}
-              label={form.pulseRate.label}
-              id={form.pulseRate.name}
-              sx={{ width: "100%" }}
-              unitOfMeasure="BPM"
-            />
-            <TextInputField
-              name={form.temperature.name}
-              label={form.temperature.label}
-              id={form.temperature.name}
-              sx={{ width: "100%" }}
-              unitOfMeasure="°C"
-            />
-          </FormFieldContainerMultiple>
-          <br />
+                <TextInputField
+                  name={form.systolic.name}
+                  label={form.systolic.label}
+                  id={form.systolic.name}
+                  sx={{ width: "100%" }}
+                  unitOfMeasure="mmHg"
+                />
+                <TextInputField
+                  name={form.diastolic.name}
+                  label={form.diastolic.label}
+                  id={form.diastolic.name}
+                  sx={{ width: "100%" }}
+                  unitOfMeasure="mmHg"
+                />
+              </FormFieldContainerMultiple>
+              <FormFieldContainerMultiple>
+                <TextInputField
+                  name={form.respiratoryRate.name}
+                  label={form.respiratoryRate.label}
+                  id={form.respiratoryRate.name}
+                  sx={{ width: "100%" }}
+                  unitOfMeasure="BPM"
+                />
+                <TextInputField
+                  name={form.pulseRate.name}
+                  label={form.pulseRate.label}
+                  id={form.pulseRate.name}
+                  sx={{ width: "100%" }}
+                  unitOfMeasure="BPM"
+                />
+                <TextInputField
+                  name={form.temperature.name}
+                  label={form.temperature.label}
+                  id={form.temperature.name}
+                  sx={{ width: "100%" }}
+                  unitOfMeasure="°C"
+                />
+              </FormFieldContainerMultiple>
+              <br />
+            </>
+          )}
 
           <FieldsContainer sx={{ alignItems: "start" }}>
             <RadioGroupInput
