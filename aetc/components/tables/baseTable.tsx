@@ -33,6 +33,8 @@ type IProp = {
   getSelectedItems?: (items: any) => void;
   searchPlaceHolder?: string;
   showSearchSwitchButton?: boolean;
+  onRowClick?: (row: any) => void;
+  dataGridSx?: any;
 };
 
 const Table: React.FC<IProp> = ({
@@ -49,6 +51,8 @@ const Table: React.FC<IProp> = ({
   showTopBar = true, // New prop to control visibility of the top bar
   searchPlaceHolder,
   showSearchSwitchButton,
+  onRowClick,
+  dataGridSx,
 }) => {
   const [searchText, setSearchText] = React.useState("");
   const [filteredRows, setFilteredRows] = React.useState(rows);
@@ -123,10 +127,13 @@ const Table: React.FC<IProp> = ({
         />
       )}
       <DataGrid
+        onCellClick={(cell) => {
+          if (onRowClick && cell.field !== "action") onRowClick(cell);
+        }}
         onRowSelectionModelChange={getSelectedItems}
         checkboxSelection={checkboxSelection}
         rowHeight={rowHeight}
-        sx={{ my: "1ch", borderStyle: "none" }}
+        sx={{ my: "1ch", borderStyle: "none", ...dataGridSx }}
         loading={loading}
         rows={filteredRows}
         columns={columns}

@@ -10,6 +10,7 @@ import {
   formatPatientManagamentPlan,
   formatDiagnosisNotes,
   formatInvestigationPlans,
+  formatRadiologyInvestigationPlans,
   formatDisposition,
 } from ".";
 import {
@@ -88,8 +89,14 @@ const hasValueMatch = (obs: any[], needle: string): boolean => {
 };
 
 export const formatClinicalNotesData = (
-  getEncountersByType: (type: string) => any[]
+  getEncountersByType: (type: string) => any[],
+  getAllObservationsByType?: (type: string) => any[]
 ) => {
+  const getInvestigationObservationsByType = (type: string) =>
+    typeof getAllObservationsByType === "function"
+      ? getAllObservationsByType(type)
+      : getEncountersByType(type);
+
   const primarySurveyData = formatPrimarySurvey({
     airwayObs: getEncountersByType(encounters.AIRWAY_ASSESSMENT),
     breathingObs: getEncountersByType(encounters.BREATHING_ASSESSMENT),
@@ -574,14 +581,31 @@ export const formatClinicalNotesData = (
     },
     {
       title: "Laboratory or Radiology Findings",
-      content: (
-        <ResultsTable
-          title="Beside Tests"
-          data={formatInvestigationPlans(
-            getEncountersByType(encounters.BED_SIDE_TEST)
-          )}
-        />
-      ),
+      content: (() => {
+        const bedSideFindings = formatInvestigationPlans(
+          getInvestigationObservationsByType(encounters.BED_SIDE_TEST)
+        );
+        const radiologyFindings = formatRadiologyInvestigationPlans(
+          getInvestigationObservationsByType(encounters.RADIOLOGY_EXAMINATON)
+        );
+
+        return (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {bedSideFindings.length > 0 && (
+              <ResultsTable title="Beside Tests" data={bedSideFindings} />
+            )}
+            {radiologyFindings.length > 0 && (
+              <ResultsTable
+                title="Radiology Examinations"
+                data={radiologyFindings}
+              />
+            )}
+            {bedSideFindings.length === 0 && radiologyFindings.length === 0 && (
+              <Box>No findings recorded.</Box>
+            )}
+          </Box>
+        );
+      })(),
     },
     {
       title: "Patient Management Plan",

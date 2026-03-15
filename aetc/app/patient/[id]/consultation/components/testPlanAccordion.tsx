@@ -25,7 +25,7 @@ export function TestPlanAccordion() {
     },
     {
       id: "radiology",
-      title: "Radiology (Coming Soon)",
+      title: "Radiology",
       content: (
         <>
           <Radiology />

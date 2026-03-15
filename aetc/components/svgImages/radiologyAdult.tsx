@@ -39,7 +39,7 @@ export function RadiologyAdultImage({ onValueChange }: Props) {
 
   return (
     <div>
-      <RadiologyAdult ref={null} />
+      <RadiologyAdult ref={containerRef} />
       <Box sx={{ display: "flex", flexWrap: "wrap" }}>
         {submittedValues.map((value) => (
           <DataBox key={value.section} labelValue={value} />

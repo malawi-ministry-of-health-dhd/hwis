@@ -9,15 +9,38 @@ import {
   FcSettings,
   FcAreaChart,
 } from "react-icons/fc";
+import { FaXRay } from "react-icons/fa";
+import { MdDonutLarge, MdMoreHoriz } from "react-icons/md";
+import { GiSoundWaves } from "react-icons/gi";
+import { TbMagnet } from "react-icons/tb";
 import AuthGuard from "@/helpers/authguard";
 import { roles } from "@/constants";
 import { AuthGuardComp } from "@/helpers/authguardcomponent";
 import { useContext } from "react";
 import { LocationContext, LocationContextType } from "@/contexts/location";
 import { useTheme } from "@mui/material/styles";
+import { getRoles } from "@/helpers/localstorage";
+import { RADIOLOGY_TYPE_OPTIONS } from "@/app/radiology/constants";
 
 function Home() {
   useContext(LocationContext) as LocationContextType;
+  const authenticatedRoles = getRoles();
+  const isProviderLogin = authenticatedRoles.includes(roles.PROVIDER);
+
+  const getRadiologyCardIcon = (slug: string) => {
+    switch (slug) {
+      case "x-ray":
+        return <FaXRay style={{ color: "#d32f2f" }} />;
+      case "ct-scan":
+        return <MdDonutLarge style={{ color: "#1565c0" }} />;
+      case "ultrasound":
+        return <GiSoundWaves style={{ color: "#00897b" }} />;
+      case "mri":
+        return <TbMagnet style={{ color: "#6a1b9a" }} />;
+      default:
+        return <MdMoreHoriz style={{ color: "#ef6c00" }} />;
+    }
+  };
 
   return (
     <>
@@ -38,6 +61,19 @@ function Home() {
           }}
           pt="5ch"
         >
+          {isProviderLogin ? (
+            <>
+              {RADIOLOGY_TYPE_OPTIONS.map((option) => (
+                <Card
+                  key={option.slug}
+                  icon={getRadiologyCardIcon(option.slug)}
+                  link={`/radiology/${option.slug}`}
+                  title={option.label}
+                />
+              ))}
+            </>
+          ) : (
+            <>
           {/* Cards with roles */}
           <AuthGuardComp roles={[roles.REGISTRATION_CLERK, roles.ADMIN]}>
             <Card
@@ -167,6 +203,8 @@ function Home() {
           <AuthGuardComp roles={[roles.ADMIN, roles.DATA_MANAGER]}>
             <Card icon={<FcSettings />} link="/config" title="Config" />
           </AuthGuardComp>
+            </>
+          )}
         </MainGrid>
         <MainGrid item xs={1} sm={1} md={1} lg={3}></MainGrid>
       </MainGrid>
@@ -237,4 +275,5 @@ export default AuthGuard(Home, [
   roles.NURSE,
   roles.INITIAL_REGISTRATION_CLERK,
   roles.STUDENT_CLINICIAN,
+  roles.PROVIDER,
 ]);

@@ -24,7 +24,7 @@ export const getPatients = () => getAll<Array<any>>(endPoint);
 
 export const getDailyVisits = (queryParam?: string) =>
   getAll<Person[]>(
-    `/visits?date_stopped&category=${queryParam}&paginate=false`
+    `/visits?date_stopped${queryParam ? `&category=${queryParam}` : ""}&paginate=false`
   );
 
 export const getDailyVisitsPaginated = (queryParam?: string) =>

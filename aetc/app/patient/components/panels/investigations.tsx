@@ -62,7 +62,7 @@ export const Investigations = () => {
     },
     {
       id: "radiology",
-      title: "Radiology (Coming Soon)",
+      title: "Radiology",
       content: (
         <>
           <Radiology />

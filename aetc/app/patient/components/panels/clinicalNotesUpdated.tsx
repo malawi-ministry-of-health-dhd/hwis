@@ -70,7 +70,7 @@ export const ClinicalNotesUpdated = () => {
     }
   };
 
-  const getEncountersByType = (encounterTypeUuid: any) => {
+  const getEncounterRecordsByType = (encounterTypeUuid: any) => {
     const {
       data: patientHistory,
       isLoading: historyLoading,
@@ -78,8 +78,20 @@ export const ClinicalNotesUpdated = () => {
       patientId,
       `encounter_type=${encounterTypeUuid}&visit=${selectedVisit?.uuid}`
     );
-    if (!patientHistory) return [];
-    return patientHistory[0]?.obs || [];
+    if (!Array.isArray(patientHistory)) return [];
+    return patientHistory;
+  };
+
+  const getEncountersByType = (encounterTypeUuid: any) => {
+    const records = getEncounterRecordsByType(encounterTypeUuid);
+    return records[0]?.obs || [];
+  };
+
+  const getAllObservationsByType = (encounterTypeUuid: any) => {
+    const records = getEncounterRecordsByType(encounterTypeUuid);
+    return records.flatMap((record: any) =>
+      Array.isArray(record?.obs) ? record.obs : []
+    );
   };
 
   const addClinicalNote = (note: string) => {
@@ -93,7 +105,10 @@ export const ClinicalNotesUpdated = () => {
     console.log("PDF generated successfully!");
   };
 
-  const notesData = formatClinicalNotesData(getEncountersByType);
+  const notesData = formatClinicalNotesData(
+    getEncountersByType,
+    getAllObservationsByType
+  );
 
   const filteredNotes = notesData.filter((notes) => {
     if (filterSoapierState) {
@@ -107,7 +122,8 @@ export const ClinicalNotesUpdated = () => {
         notes.title === "Secondary Survey" ||
         notes.title === "Patient Management Plan" ||
         notes.title === "Diagnosis" ||
-        notes.title === "Investigation Plans"
+        notes.title === "Investigation Plans" ||
+        notes.title === "Laboratory or Radiology Findings"
       );
     }
     if (filterSurgicalState) {
