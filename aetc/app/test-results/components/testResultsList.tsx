@@ -30,7 +30,7 @@ import {
   Typography,
   Button,
   Collapse,
-  MenuItem
+  MenuItem,
 } from "@mui/material";
 import {
   FaPlay,
@@ -38,10 +38,12 @@ import {
   FaFilter,
   FaTimes,
   FaChevronDown,
-  FaChevronUp
+  FaChevronUp,
 } from "react-icons/fa";
 import { fetchPatientsTablePaginate } from "@/hooks/fetchPatientsTablePaginate";
 import { useDebounce } from "@/hooks/useDebounce";
+import { red } from "@mui/material/colors";
+import { TestStatusView } from "./testStatusView";
 
 interface FilterState {
   plannedBy: string[];
@@ -64,8 +66,12 @@ export const ClientsWaitingForTestResults = () => {
   });
 
   const { navigateTo } = useNavigation();
-  const patientCareFilter = filters.patientCareArea.length === 1 ? filters.patientCareArea[0] : undefined;
-  const creator = filters.plannedBy.length === 1 ? filters.plannedBy[0] : undefined;
+  const patientCareFilter =
+    filters.patientCareArea.length === 1
+      ? filters.patientCareArea[0]
+      : undefined;
+  const creator =
+    filters.plannedBy.length === 1 ? filters.plannedBy[0] : undefined;
 
   const {
     loading,
@@ -99,19 +105,23 @@ export const ClientsWaitingForTestResults = () => {
     if (!rows || rows.length === 0) return;
 
     const plannedByOptions = Array.from(
-      new Set(rows.map((item: any) => item.last_encounter_creator).filter(Boolean))
+      new Set(
+        rows.map((item: any) => item.last_encounter_creator).filter(Boolean),
+      ),
     ).sort();
 
     const patientCareAreas = Array.from(
-      new Set(rows.map((item: any) => item.patient_care_area).filter(Boolean))
+      new Set(rows.map((item: any) => item.patient_care_area).filter(Boolean)),
     ).sort();
 
     // Only update if filters actually changed
     setAvailableFilters((prev) => {
       const samePlannedBy =
-        JSON.stringify(prev.plannedByOptions) === JSON.stringify(plannedByOptions);
+        JSON.stringify(prev.plannedByOptions) ===
+        JSON.stringify(plannedByOptions);
       const sameAreas =
-        JSON.stringify(prev.patientCareAreas) === JSON.stringify(patientCareAreas);
+        JSON.stringify(prev.patientCareAreas) ===
+        JSON.stringify(patientCareAreas);
 
       if (samePlannedBy && sameAreas) return prev;
 
@@ -121,7 +131,6 @@ export const ClientsWaitingForTestResults = () => {
       };
     });
   }, [rows]);
-
 
   // Filter the data based on active filters
   // const filteredData = React.useMemo(() => {
@@ -138,18 +147,22 @@ export const ClientsWaitingForTestResults = () => {
   //   });
   // }, [rows, filters]);
 
-  const handleFilterChange = (filterType: keyof FilterState) => (event: SelectChangeEvent<string[]>) => {
-    const value = event.target.value;
-    setFilters(prev => ({
-      ...prev,
-      [filterType]: typeof value === 'string' ? value.split(',') : value
-    }));
-  };
+  const handleFilterChange =
+    (filterType: keyof FilterState) => (event: SelectChangeEvent<string[]>) => {
+      const value = event.target.value;
+      setFilters((prev) => ({
+        ...prev,
+        [filterType]: typeof value === "string" ? value.split(",") : value,
+      }));
+    };
 
-  const clearFilter = (filterType: keyof FilterState, valueToRemove: string) => {
-    setFilters(prev => ({
+  const clearFilter = (
+    filterType: keyof FilterState,
+    valueToRemove: string,
+  ) => {
+    setFilters((prev) => ({
       ...prev,
-      [filterType]: prev[filterType].filter(item => item !== valueToRemove)
+      [filterType]: prev[filterType].filter((item) => item !== valueToRemove),
     }));
   };
 
@@ -160,8 +173,8 @@ export const ClientsWaitingForTestResults = () => {
     });
   };
 
-  const hasActiveFilters = filters.plannedBy.length > 0 ||
-    filters.patientCareArea.length > 0;
+  const hasActiveFilters =
+    filters.plannedBy.length > 0 || filters.patientCareArea.length > 0;
 
   const columns = [
     {
@@ -199,11 +212,10 @@ export const ClientsWaitingForTestResults = () => {
     },
     { field: "given_name", headerName: "First Name", flex: 1 },
     { field: "family_name", headerName: "Last Name", flex: 1 },
-    { field: "patient_arrival_time", headerName: "Arrival Time" },
+    // { field: "patient_arrival_time", headerName: "Arrival Time" },
     {
       field: "waiting",
       headerName: "WaitingTime",
-      flex: 1,
       renderCell: (cell: any) => {
         return (
           <CalculateWaitingTime arrival_time={cell.row.latest_encounter_time} />
@@ -229,13 +241,21 @@ export const ClientsWaitingForTestResults = () => {
       headerName: "Patient Care Area",
     },
     {
+      field: "test_status",
+      flex: 1.35,
+      minWidth: 320,
+      headerName: "Specimen Status",
+      renderCell: (cell: any) => {
+        return <TestStatusView patientId={cell.id} />;
+      },
+    },
+    {
       field: "action",
       headerName: "Action",
       flex: 1.2,
       renderCell: (cell: any) => {
         return (
           <>
-
             <Tooltip title="patient profile" arrow>
               <IconButton
                 onClick={() => navigateTo(`/patient/${cell.id}/profile`)}
@@ -286,7 +306,7 @@ export const ClientsWaitingForTestResults = () => {
     },
   ];
 
-  const formatForMobileView =rows?.map((row) => {
+  const formatForMobileView = rows?.map((row) => {
     return {
       id: row.id,
       visitNumber: row.aetc_visit_number,
@@ -489,6 +509,16 @@ export const ClientsWaitingForTestResults = () => {
         formatForMobileView={formatForMobileView ? formatForMobileView : []}
         onSwitchChange={setOnSwitch}
         onRowClick={(row: any) => navigateTo(`/patient/${row.id}/profile`)}
+        getRowHeight={() => "auto"}
+        dataGridSx={{
+          "& .MuiDataGrid-cell": {
+            alignItems: "flex-start",
+            py: 1.25,
+          },
+          "& .MuiDataGrid-columnHeaderTitle": {
+            fontWeight: 700,
+          },
+        }}
       />
       <CPRDialogForm
         patientuuid={patientId}

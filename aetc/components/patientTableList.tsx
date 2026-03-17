@@ -43,6 +43,8 @@ interface PatientTableServerProps {
   columns: any;
   onSwitchChange?: (values: any) => void;
   onRowClick?: (row: any) => void;
+  getRowHeight?: any;
+  dataGridSx?: any;
 }
 
 export const PatientTableListServer = ({
@@ -56,6 +58,8 @@ export const PatientTableListServer = ({
   formatForMobileView,
   onSwitchChange,
   onRowClick,
+  getRowHeight,
+  dataGridSx,
 }: PatientTableServerProps) => {
   const { isMediumOrSmall } = checkScreenSize();
 
@@ -82,6 +86,8 @@ export const PatientTableListServer = ({
       columns={columns}
       onSwitchChange={onSwitchChange}
       onRowClick={onRowClick}
+      getRowHeight={getRowHeight}
+      dataGridSx={dataGridSx}
     />
   );
 };

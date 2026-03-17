@@ -206,6 +206,8 @@ interface ServerPaginationTableProp {
   showSearchSwitchButton?: boolean;
   onSwitchChange?: (values: any) => void;
   onRowClick?: (row: any) => void;
+  getRowHeight?: any;
+  dataGridSx?: any;
 }
 
 
@@ -221,6 +223,8 @@ export const ServerPaginationTable = ({
   setSearchString,
   onSwitchChange,
   onRowClick,
+  getRowHeight,
+  dataGridSx,
 }: ServerPaginationTableProp) => {
   return (
     <>
@@ -232,13 +236,14 @@ export const ServerPaginationTable = ({
         }}
       />
       <DataGrid
-        sx={{ my: "1ch", borderStyle: "none" }}
+        sx={{ my: "1ch", borderStyle: "none", ...dataGridSx }}
         onCellClick={(cell) => {
           if (onRowClick && cell.field !== "action") onRowClick(cell);
         }}
         loading={loading}
         rows={rows}
         columns={columns}
+        getRowHeight={getRowHeight}
         paginationModel={paginationModel}
         rowCount={rowCount}
         paginationMode="server"
