@@ -56,6 +56,7 @@ export const Investigations = () => {
       content: (
         <>
           <LabRequestForm onClose={() => {}} addRequest={() => {}} />
+          <br />
           <LabOrderTable />
         </>
       ),
