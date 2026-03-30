@@ -340,20 +340,23 @@ export const TestStatusView = ({ patientId }: { patientId: string }) => {
       <Box
         sx={{
           minWidth: 260,
+          height: 80,
+          boxSizing: "border-box",
           py: 0.25,
           display: "flex",
           flexDirection: "column",
-          gap: 0.8,
+          gap: 0.65,
         }}
       >
         <Box
           sx={{
-            maxHeight: orderedLabStatuses.length > 1 ? 180 : "none",
-            overflowY: orderedLabStatuses.length > 1 ? "auto" : "visible",
-            pr: orderedLabStatuses.length > 1 ? 0.4 : 0,
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            pr: 0.4,
             display: "flex",
             flexDirection: "column",
-            gap: 0.8,
+            gap: 0.65,
             "&::-webkit-scrollbar": {
               width: 6,
             },
@@ -573,178 +576,200 @@ export const TestStatusView = ({ patientId }: { patientId: string }) => {
 
                 <Box
                   sx={{
-                    px: 2,
-                    py: 1.25,
-                    borderBottom: "1px solid #EAECF0",
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", md: "minmax(0, 0.95fr) minmax(0, 1.05fr)" },
+                    alignItems: "start",
                   }}
                 >
-                  <Typography
-                    variant="caption"
+                  <Box
                     sx={{
-                      color: "#475467",
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em",
+                      px: 2,
+                      py: 1.25,
+                      borderBottom: { xs: "1px solid #EAECF0", md: "none" },
+                      borderRight: { xs: "none", md: "1px solid #EAECF0" },
                     }}
                   >
-                    Tests
-                  </Typography>
-                  {order.tests && order.tests.length > 0 ? (
-                    <Stack spacing={0.85} sx={{ mt: 1 }}>
-                      {order.tests.map((test) => {
-                        const latestTestStatus = getLatestTestStatus(test);
-                        const testStatusStyle = getTestStatusStyle(test);
-
-                        return (
-                          <Box
-                            key={test.id}
-                            sx={{
-                              display: "flex",
-                              alignItems: "flex-start",
-                              justifyContent: "space-between",
-                              gap: 1.25,
-                              borderRadius: 2,
-                              border: "1px solid #EAECF0",
-                              backgroundColor: "#FFFFFF",
-                              px: 1.25,
-                              py: 1,
-                            }}
-                          >
-                            <Box sx={{ minWidth: 0 }}>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  color: "#344054",
-                                  lineHeight: 1.4,
-                                  fontWeight: 600,
-                                }}
-                              >
-                                {test.name}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                sx={{ color: "#667085" }}
-                              >
-                                {latestTestStatus?.timestamp
-                                  ? getHumanReadableDateTimeLab(
-                                      latestTestStatus.timestamp,
-                                    )
-                                  : hasTestResults(test)
-                                    ? "Results recorded"
-                                    : "No test status yet"}
-                              </Typography>
-                            </Box>
-                            <Chip
-                              label={testStatusStyle.label}
-                              size="small"
-                              sx={{
-                                height: 24,
-                                fontWeight: 700,
-                                color: testStatusStyle.textColor,
-                                backgroundColor: testStatusStyle.bgColor,
-                                border: "1px solid",
-                                borderColor: testStatusStyle.borderColor,
-                              }}
-                            />
-                          </Box>
-                        );
-                      })}
-                    </Stack>
-                  ) : (
                     <Typography
-                      variant="body2"
-                      sx={{ color: "#667085", mt: 1 }}
+                      variant="caption"
+                      sx={{
+                        color: "#475467",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                      }}
                     >
-                      No tests listed.
+                      Tests
                     </Typography>
-                  )}
-                </Box>
+                    {order.tests && order.tests.length > 0 ? (
+                      <Stack spacing={0.85} sx={{ mt: 1 }}>
+                        {order.tests.map((test) => {
+                          const latestTestStatus = getLatestTestStatus(test);
+                          const testStatusStyle = getTestStatusStyle(test);
 
-                <Stack spacing={0} sx={{ px: 2, py: 1.5 }}>
-                  {trail.length > 0 ? (
-                    trail.map((entry, index) => {
-                      const statusStyle = getStatusStyle(entry.status);
-                      const isLastItem = index === trail.length - 1;
-
-                      return (
-                        <Box
-                          key={`${order.id}-${entry.timestamp}-${entry.status}-${index}`}
-                          sx={{
-                            display: "grid",
-                            gridTemplateColumns: "18px minmax(0, 1fr)",
-                            columnGap: 1.25,
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              display: "flex",
-                              flexDirection: "column",
-                              alignItems: "center",
-                            }}
-                          >
+                          return (
                             <Box
-                              sx={{
-                                mt: 0.7,
-                                width: 10,
-                                height: 10,
-                                borderRadius: "50%",
-                                backgroundColor: statusStyle.textColor,
-                                border: "2px solid #FFFFFF",
-                                boxShadow: "0 0 0 1px #D0D5DD",
-                              }}
-                            />
-                            {!isLastItem && (
-                              <Box
-                                sx={{
-                                  mt: 0.35,
-                                  width: 2,
-                                  flex: 1,
-                                  minHeight: 28,
-                                  backgroundColor: "#D0D5DD",
-                                }}
-                              />
-                            )}
-                          </Box>
-
-                          <Box sx={{ pb: isLastItem ? 0 : 1.75 }}>
-                            <Box
+                              key={test.id}
                               sx={{
                                 display: "flex",
-                                alignItems: "center",
+                                alignItems: "flex-start",
                                 justifyContent: "space-between",
-                                gap: 1,
-                                flexWrap: "wrap",
+                                gap: 1.25,
+                                borderRadius: 2,
+                                border: "1px solid #EAECF0",
+                                backgroundColor: "#FFFFFF",
+                                px: 1.25,
+                                py: 1,
                               }}
                             >
-                              <Typography
-                                variant="body2"
-                                sx={{ color: "#101828", fontWeight: 600 }}
-                              >
-                                {toStatusLabel(entry.status)}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                sx={{ color: "#667085" }}
-                              >
-                                {getHumanReadableDateTimeLab(entry.timestamp)}
-                              </Typography>
+                              <Box sx={{ minWidth: 0 }}>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    color: "#344054",
+                                    lineHeight: 1.4,
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  {test.name}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  sx={{ color: "#667085" }}
+                                >
+                                  {latestTestStatus?.timestamp
+                                    ? getHumanReadableDateTimeLab(
+                                        latestTestStatus.timestamp,
+                                      )
+                                    : hasTestResults(test)
+                                      ? "Results recorded"
+                                      : "No test status yet"}
+                                </Typography>
+                              </Box>
+                              <Chip
+                                label={testStatusStyle.label}
+                                size="small"
+                                sx={{
+                                  height: 24,
+                                  fontWeight: 700,
+                                  color: testStatusStyle.textColor,
+                                  backgroundColor: testStatusStyle.bgColor,
+                                  border: "1px solid",
+                                  borderColor: testStatusStyle.borderColor,
+                                }}
+                              />
                             </Box>
-                            <Typography
-                              variant="caption"
-                              sx={{ color: "#667085" }}
-                            >
-                              {getUpdatedByLabel(entry)}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      );
-                    })
-                  ) : (
-                    <Typography variant="body2" sx={{ color: "#667085" }}>
-                      No status history available.
+                          );
+                        })}
+                      </Stack>
+                    ) : (
+                      <Typography
+                        variant="body2"
+                        sx={{ color: "#667085", mt: 1 }}
+                      >
+                        No tests listed.
+                      </Typography>
+                    )}
+                  </Box>
+
+                  <Box sx={{ px: 2, py: 1.25 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "#475467",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      Specimen Trail
                     </Typography>
-                  )}
-                </Stack>
+                    <Stack spacing={0} sx={{ mt: 1 }}>
+                      {trail.length > 0 ? (
+                        trail.map((entry, index) => {
+                          const statusStyle = getStatusStyle(entry.status);
+                          const isLastItem = index === trail.length - 1;
+
+                          return (
+                            <Box
+                              key={`${order.id}-${entry.timestamp}-${entry.status}-${index}`}
+                              sx={{
+                                display: "grid",
+                                gridTemplateColumns: "18px minmax(0, 1fr)",
+                                columnGap: 1.25,
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    mt: 0.7,
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: "50%",
+                                    backgroundColor: statusStyle.textColor,
+                                    border: "2px solid #FFFFFF",
+                                    boxShadow: "0 0 0 1px #D0D5DD",
+                                  }}
+                                />
+                                {!isLastItem && (
+                                  <Box
+                                    sx={{
+                                      mt: 0.35,
+                                      width: 2,
+                                      flex: 1,
+                                      minHeight: 28,
+                                      backgroundColor: "#D0D5DD",
+                                    }}
+                                  />
+                                )}
+                              </Box>
+
+                              <Box sx={{ pb: isLastItem ? 0 : 1.75 }}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    gap: 1,
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  <Typography
+                                    variant="body2"
+                                    sx={{ color: "#101828", fontWeight: 600 }}
+                                  >
+                                    {toStatusLabel(entry.status)}
+                                  </Typography>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ color: "#667085" }}
+                                  >
+                                    {getHumanReadableDateTimeLab(entry.timestamp)}
+                                  </Typography>
+                                </Box>
+                                <Typography
+                                  variant="caption"
+                                  sx={{ color: "#667085" }}
+                                >
+                                  {getUpdatedByLabel(entry)}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          );
+                        })
+                      ) : (
+                        <Typography variant="body2" sx={{ color: "#667085" }}>
+                          No status history available.
+                        </Typography>
+                      )}
+                    </Stack>
+                  </Box>
+                </Box>
               </Box>
             );
           })}
