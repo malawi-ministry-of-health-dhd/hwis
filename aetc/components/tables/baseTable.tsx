@@ -35,6 +35,7 @@ type IProp = {
   showSearchSwitchButton?: boolean;
   onRowClick?: (row: any) => void;
   dataGridSx?: any;
+  getRowHeight?: any;
 };
 
 const Table: React.FC<IProp> = ({
@@ -53,6 +54,7 @@ const Table: React.FC<IProp> = ({
   showSearchSwitchButton,
   onRowClick,
   dataGridSx,
+  getRowHeight,
 }) => {
   const [searchText, setSearchText] = React.useState("");
   const [filteredRows, setFilteredRows] = React.useState(rows);
@@ -133,6 +135,7 @@ const Table: React.FC<IProp> = ({
         onRowSelectionModelChange={getSelectedItems}
         checkboxSelection={checkboxSelection}
         rowHeight={rowHeight}
+        getRowHeight={getRowHeight}
         sx={{ my: "1ch", borderStyle: "none", ...dataGridSx }}
         loading={loading}
         rows={filteredRows}
