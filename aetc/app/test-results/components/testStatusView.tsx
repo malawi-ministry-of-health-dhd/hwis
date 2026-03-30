@@ -16,6 +16,8 @@ import { SyntheticEvent, useMemo, useState } from "react";
 // Temporary UI preview data. Set this to false or remove this block to restore live API data only.
 const USE_MOCK_STATUS_VIEW_DATA = false;
 
+type LabTest = PatientLabOrder["tests"][number];
+
 const createUpdatedBy = (
   first_name: string,
   last_name: string,
@@ -177,6 +179,18 @@ const STATUS_STYLES: Record<
     bgColor: "#FDECEC",
     borderColor: "#F3B3AE",
   },
+  results_available: {
+    label: "Results Available",
+    textColor: "#166534",
+    bgColor: "#EAF7EE",
+    borderColor: "#B6E2C1",
+  },
+  pending: {
+    label: "Pending",
+    textColor: "#475467",
+    bgColor: "#F2F4F7",
+    borderColor: "#D0D5DD",
+  },
 };
 
 const normalizeStatus = (status?: string) => status?.trim().toLowerCase() ?? "";
@@ -212,21 +226,23 @@ const getStatusStyle = (status?: string) => {
   );
 };
 
+const getSortedStatusTrail = (
+  trail?: LabStatusEntry[],
+  currentStatus?: LabStatusEntry,
+) => {
+  if (trail && trail.length > 0) {
+    return [...trail].sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    );
+  }
+
+  return currentStatus ? [currentStatus] : [];
+};
+
 const getStatusTrail = (order: PatientLabOrder) => {
-  if (order.order_status_trail && order.order_status_trail.length > 0) {
-    return [...order.order_status_trail]
-      .sort(
-        (a, b) =>
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-      )
-      .filter((entry) => shouldDisplayStatus(entry.status));
-  }
-
-  if (!order.order_status || !shouldDisplayStatus(order.order_status.status)) {
-    return [];
-  }
-
-  return [order.order_status];
+  return getSortedStatusTrail(order.order_status_trail, order.order_status)
+    .filter((entry) => shouldDisplayStatus(entry.status));
 };
 
 const getLatestStatus = (
@@ -246,6 +262,26 @@ const getUpdatedByLabel = (entry?: LabStatusEntry) => {
     .trim();
 
   return fullName || `Updated by ${updatedBy.id}`;
+};
+
+const hasTestResults = (test: LabTest) =>
+  Array.isArray(test.result) && test.result.length > 0;
+
+const getTestStatusTrail = (test: LabTest) =>
+  getSortedStatusTrail(test.test_status_trail, test.test_status);
+
+const getLatestTestStatus = (test: LabTest): LabStatusEntry | undefined => {
+  const statusTrail = getTestStatusTrail(test);
+  return statusTrail[statusTrail.length - 1];
+};
+
+const getTestStatusStyle = (test: LabTest) => {
+  const latestTestStatus = getLatestTestStatus(test);
+  if (latestTestStatus?.status) {
+    return getStatusStyle(latestTestStatus.status);
+  }
+
+  return getStatusStyle(hasTestResults(test) ? "results_available" : "pending");
 };
 
 export const TestStatusView = ({ patientId }: { patientId: string }) => {
@@ -312,8 +348,8 @@ export const TestStatusView = ({ patientId }: { patientId: string }) => {
       >
         <Box
           sx={{
-            maxHeight: 58,
-            overflowY: orderedLabStatuses.length > 1 ? "auto" : "hidden",
+            maxHeight: orderedLabStatuses.length > 1 ? 180 : "none",
+            overflowY: orderedLabStatuses.length > 1 ? "auto" : "visible",
             pr: orderedLabStatuses.length > 1 ? 0.4 : 0,
             display: "flex",
             flexDirection: "column",
@@ -347,9 +383,9 @@ export const TestStatusView = ({ patientId }: { patientId: string }) => {
                   }}
                   sx={{
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 1,
+                    flexDirection: "column",
+                    alignItems: "stretch",
+                    gap: 0.85,
                     borderRadius: 2,
                     border: "1px solid #E4E7EC",
                     backgroundColor: "#FFFFFF",
@@ -367,36 +403,95 @@ export const TestStatusView = ({ patientId }: { patientId: string }) => {
                     },
                   }}
                 >
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "#101828",
-                        fontWeight: 600,
-                        lineHeight: 1.25,
-                      }}
-                    >
-                      {order.specimen?.name ?? "Unknown specimen"}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "#667085" }}>
-                      Specimen status
-                    </Typography>
-                  </Box>
-                  <Chip
-                    label={statusStyle.label}
-                    size="small"
+                  <Box
                     sx={{
-                      height: 24,
-                      fontWeight: 700,
-                      color: statusStyle.textColor,
-                      backgroundColor: statusStyle.bgColor,
-                      border: "1px solid",
-                      borderColor: statusStyle.borderColor,
-                      "& .MuiChip-label": {
-                        px: 1,
-                      },
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 1,
                     }}
-                  />
+                  >
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "#101828",
+                          fontWeight: 600,
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        {order.specimen?.name ?? "Unknown specimen"}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: "#667085" }}>
+                        Specimen status
+                      </Typography>
+                    </Box>
+                    <Chip
+                      label={statusStyle.label}
+                      size="small"
+                      sx={{
+                        height: 24,
+                        fontWeight: 700,
+                        color: statusStyle.textColor,
+                        backgroundColor: statusStyle.bgColor,
+                        border: "1px solid",
+                        borderColor: statusStyle.borderColor,
+                        "& .MuiChip-label": {
+                          px: 1,
+                        },
+                      }}
+                    />
+                  </Box>
+
+                  {order.tests && order.tests.length > 0 && (
+                    <Stack spacing={0.55}>
+                      {order.tests.map((test) => {
+                        const testStatusStyle = getTestStatusStyle(test);
+
+                        return (
+                          <Box
+                            key={test.id}
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: 1,
+                            }}
+                          >
+                            <Typography
+                              variant="caption"
+                              title={test.name}
+                              sx={{
+                                color: "#475467",
+                                minWidth: 0,
+                                flex: 1,
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}
+                            >
+                              {test.name}
+                            </Typography>
+                            <Chip
+                              label={testStatusStyle.label}
+                              size="small"
+                              sx={{
+                                height: 22,
+                                fontWeight: 600,
+                                color: testStatusStyle.textColor,
+                                backgroundColor: testStatusStyle.bgColor,
+                                border: "1px solid",
+                                borderColor: testStatusStyle.borderColor,
+                                "& .MuiChip-label": {
+                                  px: 0.9,
+                                },
+                              }}
+                            />
+                          </Box>
+                        );
+                      })}
+                    </Stack>
+                  )}
                 </Box>
               </Tooltip>
             );
@@ -496,33 +591,64 @@ export const TestStatusView = ({ patientId }: { patientId: string }) => {
                   </Typography>
                   {order.tests && order.tests.length > 0 ? (
                     <Stack spacing={0.85} sx={{ mt: 1 }}>
-                      {order.tests.map((test) => (
-                        <Box
-                          key={test.id}
-                          sx={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 0.9,
-                          }}
-                        >
+                      {order.tests.map((test) => {
+                        const latestTestStatus = getLatestTestStatus(test);
+                        const testStatusStyle = getTestStatusStyle(test);
+
+                        return (
                           <Box
+                            key={test.id}
                             sx={{
-                              width: 7,
-                              height: 7,
-                              mt: 0.8,
-                              borderRadius: "50%",
-                              backgroundColor: "#98A2B3",
-                              flexShrink: 0,
+                              display: "flex",
+                              alignItems: "flex-start",
+                              justifyContent: "space-between",
+                              gap: 1.25,
+                              borderRadius: 2,
+                              border: "1px solid #EAECF0",
+                              backgroundColor: "#FFFFFF",
+                              px: 1.25,
+                              py: 1,
                             }}
-                          />
-                          <Typography
-                            variant="body2"
-                            sx={{ color: "#344054", lineHeight: 1.4 }}
                           >
-                            {test.name}
-                          </Typography>
-                        </Box>
-                      ))}
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: "#344054",
+                                  lineHeight: 1.4,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {test.name}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                sx={{ color: "#667085" }}
+                              >
+                                {latestTestStatus?.timestamp
+                                  ? getHumanReadableDateTimeLab(
+                                      latestTestStatus.timestamp,
+                                    )
+                                  : hasTestResults(test)
+                                    ? "Results recorded"
+                                    : "No test status yet"}
+                              </Typography>
+                            </Box>
+                            <Chip
+                              label={testStatusStyle.label}
+                              size="small"
+                              sx={{
+                                height: 24,
+                                fontWeight: 700,
+                                color: testStatusStyle.textColor,
+                                backgroundColor: testStatusStyle.bgColor,
+                                border: "1px solid",
+                                borderColor: testStatusStyle.borderColor,
+                              }}
+                            />
+                          </Box>
+                        );
+                      })}
                     </Stack>
                   ) : (
                     <Typography
