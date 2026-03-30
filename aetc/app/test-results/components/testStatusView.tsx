@@ -14,7 +14,7 @@ import {
 import { SyntheticEvent, useMemo, useState } from "react";
 
 // Temporary UI preview data. Set this to false or remove this block to restore live API data only.
-const USE_MOCK_STATUS_VIEW_DATA = true;
+const USE_MOCK_STATUS_VIEW_DATA = false;
 
 const createUpdatedBy = (
   first_name: string,
@@ -165,12 +165,6 @@ const STATUS_STYLES: Record<
     bgColor: "#EAF2FB",
     borderColor: "#BFD6EE",
   },
-  specimen_not_collected: {
-    label: "Not Collected",
-    textColor: "#9A3412",
-    bgColor: "#FFF4E5",
-    borderColor: "#F5C38B",
-  },
   specimen_accepted: {
     label: "Accepted",
     textColor: "#166534",
@@ -186,6 +180,11 @@ const STATUS_STYLES: Record<
 };
 
 const normalizeStatus = (status?: string) => status?.trim().toLowerCase() ?? "";
+
+const HIDDEN_SPECIMEN_STATUSES = new Set(["specimen_not_collected"]);
+
+const shouldDisplayStatus = (status?: string) =>
+  !HIDDEN_SPECIMEN_STATUSES.has(normalizeStatus(status));
 
 const toStatusLabel = (status?: string) => {
   if (!status) return "Status pending";
@@ -215,13 +214,19 @@ const getStatusStyle = (status?: string) => {
 
 const getStatusTrail = (order: PatientLabOrder) => {
   if (order.order_status_trail && order.order_status_trail.length > 0) {
-    return [...order.order_status_trail].sort(
-      (a, b) =>
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-    );
+    return [...order.order_status_trail]
+      .sort(
+        (a, b) =>
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      )
+      .filter((entry) => shouldDisplayStatus(entry.status));
   }
 
-  return order.order_status ? [order.order_status] : [];
+  if (!order.order_status || !shouldDisplayStatus(order.order_status.status)) {
+    return [];
+  }
+
+  return [order.order_status];
 };
 
 const getLatestStatus = (
@@ -259,6 +264,7 @@ export const TestStatusView = ({ patientId }: { patientId: string }) => {
         latestStatus: getLatestStatus(order),
         trail: getStatusTrail(order),
       }))
+      .filter(({ trail }) => trail.length > 0)
       .sort((firstOrder, secondOrder) => {
         const firstTimestamp = firstOrder.latestStatus?.timestamp
           ? new Date(firstOrder.latestStatus.timestamp).getTime()
