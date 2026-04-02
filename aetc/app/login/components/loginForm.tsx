@@ -10,6 +10,7 @@ import {
 } from "@/components";
 import * as yup from "yup";
 import Image from "next/image";
+import logoImage from "@/public/logo.png";
 import { Login } from "@/hooks/login";
 import { useNavigation } from "@/hooks";
 import { useContext, useEffect } from "react";
@@ -56,7 +57,7 @@ export const LoginForm = () => {
             borderRadius: "1ch",
           }}
         >
-          <Image src={"/logo.png"} alt="logo" width={100} height={100} />
+          <Image src={logoImage} alt="logo" width={100} height={100} />
           <br />
           <MainTypography variant="h3">Mahis</MainTypography>
 
