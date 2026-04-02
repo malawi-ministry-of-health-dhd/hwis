@@ -35,6 +35,7 @@ type IProp = {
   showSearchSwitchButton?: boolean;
   onRowClick?: (row: any) => void;
   dataGridSx?: any;
+  getRowHeight?: any;
 };
 
 const Table: React.FC<IProp> = ({
@@ -53,6 +54,7 @@ const Table: React.FC<IProp> = ({
   showSearchSwitchButton,
   onRowClick,
   dataGridSx,
+  getRowHeight,
 }) => {
   const [searchText, setSearchText] = React.useState("");
   const [filteredRows, setFilteredRows] = React.useState(rows);
@@ -133,6 +135,7 @@ const Table: React.FC<IProp> = ({
         onRowSelectionModelChange={getSelectedItems}
         checkboxSelection={checkboxSelection}
         rowHeight={rowHeight}
+        getRowHeight={getRowHeight}
         sx={{ my: "1ch", borderStyle: "none", ...dataGridSx }}
         loading={loading}
         rows={filteredRows}
@@ -206,6 +209,8 @@ interface ServerPaginationTableProp {
   showSearchSwitchButton?: boolean;
   onSwitchChange?: (values: any) => void;
   onRowClick?: (row: any) => void;
+  getRowHeight?: any;
+  dataGridSx?: any;
 }
 
 
@@ -221,6 +226,8 @@ export const ServerPaginationTable = ({
   setSearchString,
   onSwitchChange,
   onRowClick,
+  getRowHeight,
+  dataGridSx,
 }: ServerPaginationTableProp) => {
   return (
     <>
@@ -232,13 +239,14 @@ export const ServerPaginationTable = ({
         }}
       />
       <DataGrid
-        sx={{ my: "1ch", borderStyle: "none" }}
+        sx={{ my: "1ch", borderStyle: "none", ...dataGridSx }}
         onCellClick={(cell) => {
           if (onRowClick && cell.field !== "action") onRowClick(cell);
         }}
         loading={loading}
         rows={rows}
         columns={columns}
+        getRowHeight={getRowHeight}
         paginationModel={paginationModel}
         rowCount={rowCount}
         paginationMode="server"
