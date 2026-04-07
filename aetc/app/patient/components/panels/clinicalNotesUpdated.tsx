@@ -195,6 +195,7 @@ export const ClinicalNotesUpdated = () => {
           ref={pdfRef}
           onPrintComplete={handleSurgicalPrintComplete}
           showPreview={true}
+          visitUuid={selectedVisit.uuid}
         />
       )}
 
@@ -204,6 +205,7 @@ export const ClinicalNotesUpdated = () => {
           ref={gyneacologyRef}
           onPrintComplete={handleSurgicalPrintComplete}
           showPreview={true}
+          visitUuid={selectedVisit.uuid}
         />
       )}
 
@@ -213,6 +215,7 @@ export const ClinicalNotesUpdated = () => {
           ref={medicalInpatientRef}
           onPrintComplete={handleSurgicalPrintComplete}
           showPreview={true}
+          visitUuid={selectedVisit.uuid}
         />
       )}
     </Panel>
