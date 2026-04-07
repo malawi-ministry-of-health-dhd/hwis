@@ -3,7 +3,7 @@ import "./globals.css";
 import { NavBar } from "@/components";
 import { ProviderTheme } from "@/components/providers";
 import { ContextProviders, ReactQueryProvider } from "@/providers";
-import { ToastContainer } from "react-toastify";
+import { Slide, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { OverlayLoader } from "@/components/backdrop";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -76,7 +76,7 @@ export default function RootLayout({
                 {children}
                 <PrinterDialog />
                 <OverlayLoader open={false} />
-                <ToastContainer limit={1} />
+                <ToastContainer limit={1} transition={Slide} />
               </ProviderTheme>
             </ContextProviders>
           </ReactQueryProvider>
