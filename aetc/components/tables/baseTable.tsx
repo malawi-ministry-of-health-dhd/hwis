@@ -33,6 +33,9 @@ type IProp = {
   getSelectedItems?: (items: any) => void;
   searchPlaceHolder?: string;
   showSearchSwitchButton?: boolean;
+  onRowClick?: (row: any) => void;
+  dataGridSx?: any;
+  getRowHeight?: any;
 };
 
 const Table: React.FC<IProp> = ({
@@ -49,6 +52,9 @@ const Table: React.FC<IProp> = ({
   showTopBar = true, // New prop to control visibility of the top bar
   searchPlaceHolder,
   showSearchSwitchButton,
+  onRowClick,
+  dataGridSx,
+  getRowHeight,
 }) => {
   const [searchText, setSearchText] = React.useState("");
   const [filteredRows, setFilteredRows] = React.useState(rows);
@@ -123,10 +129,14 @@ const Table: React.FC<IProp> = ({
         />
       )}
       <DataGrid
+        onCellClick={(cell) => {
+          if (onRowClick && cell.field !== "action") onRowClick(cell);
+        }}
         onRowSelectionModelChange={getSelectedItems}
         checkboxSelection={checkboxSelection}
         rowHeight={rowHeight}
-        sx={{ my: "1ch", borderStyle: "none" }}
+        getRowHeight={getRowHeight}
+        sx={{ my: "1ch", borderStyle: "none", ...dataGridSx }}
         loading={loading}
         rows={filteredRows}
         columns={columns}
@@ -199,6 +209,8 @@ interface ServerPaginationTableProp {
   showSearchSwitchButton?: boolean;
   onSwitchChange?: (values: any) => void;
   onRowClick?: (row: any) => void;
+  getRowHeight?: any;
+  dataGridSx?: any;
 }
 
 
@@ -214,6 +226,8 @@ export const ServerPaginationTable = ({
   setSearchString,
   onSwitchChange,
   onRowClick,
+  getRowHeight,
+  dataGridSx,
 }: ServerPaginationTableProp) => {
   return (
     <>
@@ -225,13 +239,14 @@ export const ServerPaginationTable = ({
         }}
       />
       <DataGrid
-        sx={{ my: "1ch", borderStyle: "none" }}
+        sx={{ my: "1ch", borderStyle: "none", ...dataGridSx }}
         onCellClick={(cell) => {
           if (onRowClick && cell.field !== "action") onRowClick(cell);
         }}
         loading={loading}
         rows={rows}
         columns={columns}
+        getRowHeight={getRowHeight}
         paginationModel={paginationModel}
         rowCount={rowCount}
         paginationMode="server"

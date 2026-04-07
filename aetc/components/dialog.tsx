@@ -15,19 +15,30 @@ export interface SimpleDialogProps {
 }
 
 export function GenericDialog({ onClose, open, children, title, maxWidth = "lg", sx }: SimpleDialogProps) {
-    const handleClose = () => {
+    const handleClose = (
+        event: {},
+        _reason: "backdropClick" | "escapeKeyDown",
+    ) => {
+        (event as React.SyntheticEvent)?.stopPropagation?.();
         onClose()
     };
 
 
     return (
-        <Dialog maxWidth={maxWidth} fullWidth={true} onClose={handleClose} open={open}>
+        <Dialog
+            maxWidth={maxWidth}
+            fullWidth={true}
+            onClose={handleClose}
+            onClick={(event) => event.stopPropagation()}
+            open={open}
+        >
             <DialogTitle>{title}</DialogTitle>
-            <DialogContent sx={{ ...sx, overflow: "visible" }}>
+            <DialogContent
+                onClick={(event) => event.stopPropagation()}
+                sx={{ ...sx, overflow: "visible" }}
+            >
                 {children}
             </DialogContent>
         </Dialog>
     );
 }
-
-
