@@ -19,19 +19,21 @@ export interface MedicalInpatientNotesPDFRef {
 interface GenerateMedicalInpatientPDFProps {
     onPrintComplete?: () => void;
     showPreview?: boolean; // Add this new prop
+    visitUuid?: string;
 
 }
 
 
 export const GenerateMedicalInpatientlNotesPDF = forwardRef<MedicalInpatientNotesPDFRef, GenerateMedicalInpatientPDFProps>(
-    ({ onPrintComplete, showPreview = false }, ref) => {
+    ({ onPrintComplete, showPreview = false, visitUuid }, ref) => {
         const [row, setRow] = useState<any>(null);
         const { params } = useParameters();
         const { data: patientVisits } = getPatientVisitTypes(params.id as string);
         const [activeVisit, setActiveVisit] = useState<Visit | undefined>(undefined);
+        const targetVisitUuid = visitUuid || activeVisit?.uuid;
         const { data: encountersData } = getPatientsEncounters(
             params.id as string,
-            activeVisit?.uuid ? `visit=${activeVisit.uuid}` : undefined
+            targetVisitUuid ? `visit=${targetVisitUuid}` : undefined
         );
 
         useEffect(() => {
@@ -150,14 +152,14 @@ export const GenerateMedicalInpatientlNotesPDF = forwardRef<MedicalInpatientNote
         }));
 
         const visitEncounters = React.useMemo(() => {
-            if (!encountersData || !activeVisit?.uuid) return [];
+            if (!encountersData || !targetVisitUuid) return [];
             return encountersData.filter(
-                (encounter: any) => encounter?.visit?.uuid === activeVisit.uuid
+                (encounter: any) => encounter?.visit?.uuid === targetVisitUuid
             );
-        }, [encountersData, activeVisit?.uuid]);
+        }, [encountersData, targetVisitUuid]);
 
         useEffect(() => {
-            if (!activeVisit?.uuid || visitEncounters.length === 0) {
+            if (!targetVisitUuid || visitEncounters.length === 0) {
                 setMedicalInpatientInfo(initialMedicalInpatientInfo);
                 return;
             }
@@ -646,7 +648,7 @@ export const GenerateMedicalInpatientlNotesPDF = forwardRef<MedicalInpatientNote
             //     });
             // };
 
-        }, [visitEncounters, activeVisit?.uuid]);
+        }, [visitEncounters, targetVisitUuid]);
 
         const formatDateTime = (dateTimeString: string) => {
             if (!dateTimeString) return "";
