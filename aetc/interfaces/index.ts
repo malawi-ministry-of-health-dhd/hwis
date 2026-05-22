@@ -284,12 +284,43 @@ interface ReasonForTest {
   name: string;
 }
 
+export interface LabStatusUpdatedBy {
+  first_name: string;
+  last_name: string;
+  id: string | number;
+  phone_number?: string | null;
+}
+
+export interface LabStatusEntry {
+  status_id: number;
+  status: string;
+  timestamp: string;
+  updated_by?: LabStatusUpdatedBy | null;
+}
+
+export interface LabResultIndicator {
+  concept_id: number;
+  name: string;
+}
+
+export interface LabResultValue {
+  id: number;
+  indicator: LabResultIndicator;
+  date: string;
+  value: string | number | null;
+  value_type: string;
+  value_modifier: string;
+  program_id: number | null;
+}
+
 interface Test {
   id: number;
-  concept_id: number;
-  uuid: string;
+  concept_id?: number;
+  uuid?: string;
   name: string;
-  result: any;
+  result?: LabResultValue[];
+  test_status?: LabStatusEntry;
+  test_status_trail?: LabStatusEntry[];
 }
 
 export type PatientLabOrder = {
@@ -304,6 +335,8 @@ export type PatientLabOrder = {
   target_lab: string;
   reason_for_test: ReasonForTest;
   delivery_mode: any;
+  order_status?: LabStatusEntry;
+  order_status_trail?: LabStatusEntry[];
   tests: Test[];
 };
 

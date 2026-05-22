@@ -56,13 +56,14 @@ export const Investigations = () => {
       content: (
         <>
           <LabRequestForm onClose={() => {}} addRequest={() => {}} />
+          <br />
           <LabOrderTable />
         </>
       ),
     },
     {
       id: "radiology",
-      title: "Radiology (Coming Soon)",
+      title: "Radiology",
       content: (
         <>
           <Radiology />

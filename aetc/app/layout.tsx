@@ -3,13 +3,12 @@ import "./globals.css";
 import { NavBar } from "@/components";
 import { ProviderTheme } from "@/components/providers";
 import { ContextProviders, ReactQueryProvider } from "@/providers";
+import { Slide, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { OverlayLoader } from "@/components/backdrop";
 import CssBaseline from "@mui/material/CssBaseline";
 import { PrinterDialog } from "@/components/printerDialog";
 import { ErrorBoundary } from "./components/errorBoundary";
-
-
 
 const APP_NAME = "Mahis";
 const APP_DEFAULT_TITLE = "Malawi Healthcare information System";
@@ -75,6 +74,7 @@ export default function RootLayout({
                 {children}
                 <PrinterDialog />
                 <OverlayLoader open={false} />
+                <ToastContainer limit={1} transition={Slide} />
               </ProviderTheme>
             </ContextProviders>
           </ReactQueryProvider>

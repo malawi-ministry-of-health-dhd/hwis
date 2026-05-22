@@ -10,7 +10,7 @@ import {
   Relationship,
   RelationshipType,
 } from "@/interfaces";
-import { create, edit, get, getAll, getOne, remove  } from "./httpService";
+import { create, edit, get, getAll, getOne, remove } from "./httpService";
 
 const endPoint = "/people";
 
@@ -23,14 +23,10 @@ export const initialRegistration = (patientData: any) =>
 export const getPatients = () => getAll<Array<any>>(endPoint);
 
 export const getDailyVisits = (queryParam?: string) =>
-  getAll<Person[]>(
-    `/aetc_visit_lists?category=${queryParam}&paginate=false`
-  );
+  getAll<Person[]>(`/aetc_visit_lists?category=${queryParam}&paginate=false`);
 
 export const getDailyVisitsPaginated = (queryParam?: string) =>
-  getAll<DailyVisitPaginated>(
-    `/aetc_visit_lists?${queryParam}&paginate=true`
-  );
+  getAll<DailyVisitPaginated>(`/aetc_visit_lists?${queryParam}&paginate=true`);
 
 // getAll<Person[]>(`/daily_visits?category=${queryParam}`);
 // getAll<{
@@ -51,23 +47,23 @@ export const getPatient = (uuid: string) => getOne<Person>(uuid, "/patients");
 export const findByNameAndGender = (
   firstName: string,
   lastName: string,
-  gender: string
+  gender: string,
 ) =>
   getAll<DDESearch>(
-    `/dde/patients/find_by_name_and_gender?given_name=${firstName}&family_name=${lastName}&gender=${gender}&visit_type_id=${process.env.NEXT_PUBLIC_DDEPROGRAMID}`
+    `/dde/patients/find_by_name_and_gender?given_name=${firstName}&family_name=${lastName}&gender=${gender}&visit_type_id=${process.env.NEXT_PUBLIC_DDEPROGRAMID}`,
   );
 
 export const searchByNameAndGender = (
   firstName?: string,
   lastName?: string,
-  gender?: string
+  gender?: string,
 ) =>
   getAll<DDESearch>(
-    `/search/patients?given_name=${firstName}&family_name=${lastName}&gender=${gender}`
+    `/search/patients?given_name=${firstName}&family_name=${lastName}&gender=${gender}`,
   );
 export const findByNPID = (npid: string) =>
   getAll<DDESearch>(
-    `/dde/patients/find_by_npid?npid=${npid}&visit_type_id=${process.env.NEXT_PUBLIC_DDEPROGRAMID}`
+    `/dde/patients/find_by_npid?npid=${npid}&visit_type_id=${process.env.NEXT_PUBLIC_DDEPROGRAMID}`,
   );
 
 export const findByDemographics = (
@@ -77,22 +73,22 @@ export const findByDemographics = (
   birthdate: string,
   homeVillage: string,
   homeTA: string,
-  homeDistrict: string
+  homeDistrict: string,
 ) =>
   getAll<DDEScore[]>(
-    `/dde/patients/match_by_demographics?home_district=${homeDistrict}&home_traditional_authority=${homeTA}&home_village=${homeVillage}&birthdate=${birthdate}&given_name=${firstName}&family_name=${lastName}&gender=${gender}&visit_type_id=${process.env.NEXT_PUBLIC_DDEPROGRAMID}`
+    `/dde/patients/match_by_demographics?home_district=${homeDistrict}&home_traditional_authority=${homeTA}&home_village=${homeVillage}&birthdate=${birthdate}&given_name=${firstName}&family_name=${lastName}&gender=${gender}&visit_type_id=${process.env.NEXT_PUBLIC_DDEPROGRAMID}`,
   );
 
 export const mergePatients = (data: any) => {
   return create<Person & { active_visit: ActiveVisit }>(
     data,
-    `/dde/patients/merge?visit_type_id=${process.env.NEXT_PUBLIC_DDEPROGRAMID}`
+    `/dde/patients/merge?visit_type_id=${process.env.NEXT_PUBLIC_DDEPROGRAMID}`,
   );
 };
 
 export const getRelations = (patientId: string) => {
   return getAll<Relationship[]>(
-    `/relationships?person_a=${patientId}&paginate=false`
+    `/relationships?person_a=${patientId}&paginate=false`,
   );
 };
 
@@ -116,7 +112,8 @@ export const getDeathReports = () => get<DeathReport[]>("/death_reports");
 export const updateDeathReport = (id: string | number, data: any) =>
   edit<DeathReport>(id, data, "/death_reports");
 
-export const voidPatient = (id: string, void_reason:string) => remove<Patient>(`patients/${id}`, {  id, void_reason });
+export const voidPatient = (id: string, void_reason: string) =>
+  remove<Patient>(`patients/${id}`, { id, void_reason });
 
 // export const updateDeathReport = (id: string, data: any) =>
 //   edit<DeathReport>(id, data, "/death_reports");

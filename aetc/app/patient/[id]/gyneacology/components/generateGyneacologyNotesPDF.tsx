@@ -18,18 +18,20 @@ export interface GyneacologyNotesPDFRef {
 interface GenerateGyneacologyNotesPDFProps {
     onPrintComplete?: () => void;
     showPreview?: boolean; // Add this new prop
+    visitUuid?: string;
 
 }
 
 export const GenerateGyneacologyNotesPDF = forwardRef<GyneacologyNotesPDFRef, GenerateGyneacologyNotesPDFProps>(
-    ({ onPrintComplete, showPreview = false }, ref) => {
+    ({ onPrintComplete, showPreview = false, visitUuid }, ref) => {
         const [row, setRow] = useState<any>(null);
         const { params } = useParameters();
         const { data: patientVisits } = getPatientVisitTypes(params.id as string);
         const [activeVisit, setActiveVisit] = useState<Visit | undefined>(undefined);
+        const targetVisitUuid = visitUuid || activeVisit?.uuid;
         const { data: encountersData } = getPatientsEncounters(
             params.id as string,
-            activeVisit?.uuid ? `visit=${activeVisit.uuid}` : undefined
+            targetVisitUuid ? `visit=${targetVisitUuid}` : undefined
         );
 
         useEffect(() => {
@@ -111,14 +113,14 @@ export const GenerateGyneacologyNotesPDF = forwardRef<GyneacologyNotesPDFRef, Ge
         }));
 
         const visitEncounters = React.useMemo(() => {
-            if (!encountersData || !activeVisit?.uuid) return [];
+            if (!encountersData || !targetVisitUuid) return [];
             return encountersData.filter(
-                (encounter: any) => encounter?.visit?.uuid === activeVisit.uuid
+                (encounter: any) => encounter?.visit?.uuid === targetVisitUuid
             );
-        }, [encountersData, activeVisit?.uuid]);
+        }, [encountersData, targetVisitUuid]);
 
         useEffect(() => {
-            if (!activeVisit?.uuid || visitEncounters.length === 0) {
+            if (!targetVisitUuid || visitEncounters.length === 0) {
                 setComplaintsInfo(initialComplaintsInfo);
                 return;
             }
@@ -329,7 +331,7 @@ export const GenerateGyneacologyNotesPDF = forwardRef<GyneacologyNotesPDFRef, Ge
                 });
                 setComplaintsInfo(newComplaintsInfo);
             }
-        }, [visitEncounters, activeVisit?.uuid]);
+        }, [visitEncounters, targetVisitUuid]);
 
         const formatDateTime = (dateTimeString: string) => {
             if (!dateTimeString) return "";
