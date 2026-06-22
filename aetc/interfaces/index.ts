@@ -186,6 +186,9 @@ export interface Visit {
   patient: string;
   visitType: string;
   startDatetime: string;
+  start_datetime?: string;
+  date_started?: string | Date;
+  date_stopped?: string | Date | null;
 }
 
 export interface LabRequest {

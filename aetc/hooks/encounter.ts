@@ -18,6 +18,13 @@ type AetcMovePayload = {
   department?: string;
 };
 
+type SubmittedObservation = {
+  concept?: string;
+  value?: any;
+  groupMembers?: SubmittedObservation[];
+  coded?: boolean;
+};
+
 const DISPOSITION_CONCEPTS = new Set<string>([
   concepts.DISCHARGE_HOME,
   concepts.ADMISSION,
@@ -29,7 +36,7 @@ const DISPOSITION_CONCEPTS = new Set<string>([
   concepts.SHORT_STAY,
 ]);
 
-const normalizeObservations = (obs: any): Obs[] => {
+const normalizeObservations = (obs: any): SubmittedObservation[] => {
   if (Array.isArray(obs)) return obs;
   return obs ? [obs] : [];
 };
@@ -40,7 +47,7 @@ const getGroupMemberValue = (observation: any, concept: string) =>
 
 const buildAetcDispositionMovePayload = (
   encounter: any,
-  observations: Obs[],
+  observations: SubmittedObservation[],
 ): AetcMovePayload | null => {
   const encounterType = encounter?.encounterType;
 
@@ -102,7 +109,7 @@ const buildAetcDispositionMovePayload = (
 
 const syncAetcVisitListDisposition = async (
   encounter: any,
-  observations: Obs[] | Obs,
+  observations: SubmittedObservation[] | SubmittedObservation,
 ) => {
   const patientId = encounter?.patient;
   if (!patientId) return;
